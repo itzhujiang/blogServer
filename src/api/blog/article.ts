@@ -7,8 +7,14 @@ import { getArticleList } from '../../services/blog/article';
 
 const router = express.Router();
 
-router.get('/getArticleList', [...getArticleListValidation, handleValidationErrors], asyncHandler<ArticleListRequsetType, ArticleListResponseType>(async (req) => {
-    return await getArticleList(req.query)
-}))
+router.get(
+  '/getArticleList',
+  [...getArticleListValidation, handleValidationErrors],
+  asyncHandler<ArticleListRequsetType, ArticleListResponseType>(async req => {
+    return await getArticleList(req.query);
+  })
+);
 
-export default router
+router.post('/addArticle');
+
+export default router;

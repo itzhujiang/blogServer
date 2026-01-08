@@ -1,22 +1,17 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 
 /**
  * 关于我页面属性接口
  */
 export interface AboutPageAttributes {
-  id: number;                              // 页面ID
-  title: string;                           // 页面标题
-  content: string;                         // 页面内容（Markdown格式）
-  avatarUrl?: string | null;               // 头像URL
-  contactInfo?: Record<string, unknown> | null;   // 联系方式，JSON格式（如：{email, location}）
-  socialLinks?: Record<string, unknown> | null;   // 社交媒体链接，JSON格式（如：{github, twitter}）
-  skills?: string[] | null;                // 技能标签，字符串数组（如：["Web开发", "AI艺术"]）
-  updatedAt?: number | null;               // 更新时间（毫秒级Unix时间戳）
+  id: number; // 页面ID
+  title: string; // 页面标题
+  content: string; // 页面内容（Markdown格式）
+  avatarUrl?: string | null; // 头像URL
+  contactInfo?: Record<string, unknown> | null; // 联系方式，JSON格式（如：{email, location}）
+  socialLinks?: Record<string, unknown> | null; // 社交媒体链接，JSON格式（如：{github, twitter}）
+  skills?: string[] | null; // 技能标签，字符串数组（如：["Web开发", "AI艺术"]）
+  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */

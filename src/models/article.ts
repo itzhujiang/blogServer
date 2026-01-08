@@ -1,10 +1,4 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Association,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Association, Sequelize } from 'sequelize';
 import { ArticleCategory } from './article-category';
 import { ArticleMedia } from './article-media';
 import { Comment } from './comment';
@@ -14,26 +8,33 @@ import { ArticleStatusLiteral } from './enums';
  * 文章属性接口
  */
 export interface ArticleAttributes {
-  id: number;                            // 文章ID
-  title: string;                         // 文章标题
-  slug: string;                          // URL友好标识（用于SEO）
-  filePath: string;                      // 服务端文件路径（Markdown文件路径）
-  excerpt?: string | null;               // 文章摘要
-  featuredImageUrl?: string | null;      // 头图URL（文章详情页顶部大图）
-  thumbnailUrl?: string | null;          // 缩略图URL（文章列表展示用）
-  authorName: string;                    // 作者名（默认：木心）
-  readingTime: number;                   // 预计阅读时间（分钟）
-  viewCount: number;                     // 浏览次数
-  status: ArticleStatusLiteral;          // 发布状态（draft=草稿, published=已发布, archived=已归档）
-  publishedAt?: number | null;           // 发布时间（毫秒级Unix时间戳）
-  createdAt?: number | null;             // 创建时间（毫秒级Unix时间戳）
-  updatedAt?: number | null;             // 更新时间（毫秒级Unix时间戳）
+  id: number; // 文章ID
+  title: string; // 文章标题
+  slug: string; // URL友好标识（用于SEO）
+  filePath: string; // 服务端文件路径（Markdown文件路径）
+  excerpt?: string | null; // 文章摘要
+  thumbnailUrl?: string | null; // 缩略图URL（文章列表展示用）
+  authorName: string; // 作者名（默认：木心）
+  readingTime: number; // 预计阅读时间（分钟）
+  viewCount: number; // 浏览次数
+  status: ArticleStatusLiteral; // 发布状态（draft=草稿, published=已发布, archived=已归档）
+  publishedAt?: number | null; // 发布时间（毫秒级Unix时间戳）
+  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
+  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
 export type ArticleCreationAttributes = Optional<
   ArticleAttributes,
-  'id' | 'excerpt' | 'featuredImageUrl' | 'thumbnailUrl' | 'readingTime' | 'viewCount' | 'status' | 'publishedAt' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'excerpt'
+  | 'thumbnailUrl'
+  | 'readingTime'
+  | 'viewCount'
+  | 'status'
+  | 'publishedAt'
+  | 'createdAt'
+  | 'updatedAt'
 >;
 
 // 模型类
@@ -46,7 +47,6 @@ export class Article
   declare slug: string;
   declare filePath: string;
   declare excerpt: string | null;
-  declare featuredImageUrl: string | null;
   declare thumbnailUrl: string | null;
   declare authorName: string;
   declare readingTime: number;
@@ -94,11 +94,6 @@ export function initArticleModel(sequelize: Sequelize): typeof Article {
         type: DataTypes.TEXT,
         allowNull: true,
         comment: '文章摘要',
-      },
-      featuredImageUrl: {
-        type: DataTypes.STRING(500),
-        allowNull: true,
-        comment: '头图URL',
       },
       thumbnailUrl: {
         type: DataTypes.STRING(500),

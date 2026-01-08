@@ -1,10 +1,4 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Association,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Association, Sequelize } from 'sequelize';
 import { Article } from './article';
 import { CommentStatusLiteral } from './enums';
 
@@ -12,24 +6,32 @@ import { CommentStatusLiteral } from './enums';
  * 评论属性接口
  */
 export interface CommentAttributes {
-  id: number;                            // 评论ID
-  articleId: number;                     // 关联文章ID
-  parentId?: number | null;              // 父评论ID（用于嵌套回复，null表示顶级评论）
-  authorName: string;                    // 访客姓名
-  authorEmail?: string | null;           // 访客邮箱
-  authorUrl?: string | null;             // 访客网站
-  authorIp?: string | null;              // IP地址（用于防垃圾评论）
-  content: string;                       // 评论内容
-  status: CommentStatusLiteral;          // 审核状态（pending=待审核, approved=已通过, spam=垃圾评论, trash=已删除）
-  likeCount: number;                     // 点赞数
-  createdAt?: number | null;             // 评论时间（毫秒级Unix时间戳）
-  updatedAt?: number | null;             // 更新时间（毫秒级Unix时间戳）
+  id: number; // 评论ID
+  articleId: number; // 关联文章ID
+  parentId?: number | null; // 父评论ID（用于嵌套回复，null表示顶级评论）
+  authorName: string; // 访客姓名
+  authorEmail?: string | null; // 访客邮箱
+  authorUrl?: string | null; // 访客网站
+  authorIp?: string | null; // IP地址（用于防垃圾评论）
+  content: string; // 评论内容
+  status: CommentStatusLiteral; // 审核状态（pending=待审核, approved=已通过, spam=垃圾评论, trash=已删除）
+  likeCount: number; // 点赞数
+  createdAt?: number | null; // 评论时间（毫秒级Unix时间戳）
+  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
 export type CommentCreationAttributes = Optional<
   CommentAttributes,
-  'id' | 'parentId' | 'authorEmail' | 'authorUrl' | 'authorIp' | 'status' | 'likeCount' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'parentId'
+  | 'authorEmail'
+  | 'authorUrl'
+  | 'authorIp'
+  | 'status'
+  | 'likeCount'
+  | 'createdAt'
+  | 'updatedAt'
 >;
 
 // 模型类

@@ -1,29 +1,24 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 import { AdminStatusLiteral } from './enums';
 
 /**
  * 管理员用户属性接口
  */
 export interface AdminUserAttributes {
-  id: number;                          // 管理员ID
-  username: string;                    // 登录用户名（唯一标识）
-  email: string;                       // 邮箱地址（用于密码重置和通知）
-  displayName?: string | null;         // 显示名称（后台展示用）
-  avatarUrl?: string | null;           // 头像URL
-  passwordHash: string;                // 密码哈希值（MD5算法）
-  passwordSalt: string;                // 密码盐值（增强安全性）
-  status: AdminStatusLiteral;          // 账户状态（active=活跃, inactive=停用, locked=锁定）
-  lastLoginAt?: number | null;         // 最后登录时间（毫秒级Unix时间戳）
-  lastLoginIp?: string | null;         // 最后登录IP地址（支持IPv4和IPv6）
-  loginAttempts: number;               // 连续登录失败次数（5次后锁定）
-  lockedUntil?: number | null;         // 账户锁定到期时间（毫秒级Unix时间戳）
-  createdAt?: number | null;           // 创建时间（毫秒级Unix时间戳）
-  updatedAt?: number | null;           // 更新时间（毫秒级Unix时间戳）
+  id: number; // 管理员ID
+  username: string; // 登录用户名（唯一标识）
+  email: string; // 邮箱地址（用于密码重置和通知）
+  displayName?: string | null; // 显示名称（后台展示用）
+  avatarUrl?: string | null; // 头像URL
+  passwordHash: string; // 密码哈希值（MD5算法）
+  passwordSalt: string; // 密码盐值（增强安全性）
+  status: AdminStatusLiteral; // 账户状态（active=活跃, inactive=停用, locked=锁定）
+  lastLoginAt?: number | null; // 最后登录时间（毫秒级Unix时间戳）
+  lastLoginIp?: string | null; // 最后登录IP地址（支持IPv4和IPv6）
+  loginAttempts: number; // 连续登录失败次数（5次后锁定）
+  lockedUntil?: number | null; // 账户锁定到期时间（毫秒级Unix时间戳）
+  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
+  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */

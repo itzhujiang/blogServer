@@ -17,15 +17,11 @@ const handleError = (err: AppError, req: Request, res: ResponseType) => {
     stack: err.stack,
     url: req.url,
     method: req.method,
-    statusCode: err.statusCode || 500
+    statusCode: err.statusCode || 500,
   });
 
-
   // 区分开发环境和生产环境的错误返回
-  res.status(500).send(sendErr(
-    '服务器发生错误',
-    500
-  ));
+  res.status(500).send(sendErr('服务器发生错误', 500));
 };
 
 export default (err: AppError, _req: Request, res: ResponseType, next: NextFunction) => {
@@ -34,4 +30,4 @@ export default (err: AppError, _req: Request, res: ResponseType, next: NextFunct
   } else {
     next();
   }
-}
+};

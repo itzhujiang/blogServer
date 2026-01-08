@@ -1,21 +1,15 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Association,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Association, Sequelize } from 'sequelize';
 import { ArticleCategory } from './article-category';
 
 /**
  * 分类属性接口
  */
 export interface CategoryAttributes {
-  id: number;                      // 分类ID
-  name: string;                    // 分类名称
-  slug: string;                    // URL标识（URL友好的英文标识）
-  createdAt?: number | null;       // 创建时间（毫秒级Unix时间戳）
-  updatedAt?: number | null;       // 更新时间（毫秒级Unix时间戳）
+  id: number; // 分类ID
+  name: string; // 分类名称
+  slug: string; // URL标识（URL友好的英文标识）
+  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
+  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */

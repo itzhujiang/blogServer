@@ -1,21 +1,16 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 import { ArtworkMediaUsageLiteral } from './enums';
 
 /**
  * AI作品媒体关联属性接口
  */
 export interface ArtworkMediaAttributes {
-  id?: number;                           // 关联ID（可选，创建时自动生成）
-  artworkId: number;                     // AI作品ID
-  mediaId: number;                       // 媒体文件ID
-  usageType: ArtworkMediaUsageLiteral;   // 使用类型（main=主展示图, thumbnail=缩略图, process=创作过程图, variant=变体图）
-  sortOrder: number;                     // 排序权重（数字越小越靠前）
-  createdAt?: number | null;             // 创建时间（毫秒级Unix时间戳）
+  id?: number; // 关联ID（可选，创建时自动生成）
+  artworkId: number; // AI作品ID
+  mediaId: number; // 媒体文件ID
+  usageType: ArtworkMediaUsageLiteral; // 使用类型（main=主展示图, thumbnail=缩略图, process=创作过程图, variant=变体图）
+  sortOrder: number; // 排序权重（数字越小越靠前）
+  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -38,9 +33,7 @@ export class ArtworkMedia
 }
 
 // 初始化函数
-export function initArtworkMediaModel(
-  sequelize: Sequelize
-): typeof ArtworkMedia {
+export function initArtworkMediaModel(sequelize: Sequelize): typeof ArtworkMedia {
   ArtworkMedia.init(
     {
       id: {

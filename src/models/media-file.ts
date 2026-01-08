@@ -1,10 +1,4 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Association,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Association, Sequelize } from 'sequelize';
 import { ArticleMedia } from './article-media';
 import { ArtworkMedia } from './artwork-media';
 import { MediaUsageTypeLiteral } from './enums';
@@ -13,26 +7,37 @@ import { MediaUsageTypeLiteral } from './enums';
  * 媒体文件属性接口
  */
 export interface MediaFileAttributes {
-  id: number;                            // 媒体文件ID
-  originalName: string;                  // 原始文件名
-  storedName: string;                    // 存储文件名（UUID格式）
-  filePath: string;                      // 服务端存储路径
-  fileUrl: string;                       // 访问URL
-  fileSize?: number | null;              // 文件大小（字节）
-  mimeType?: string | null;              // MIME类型（如：image/jpeg）
-  width?: number | null;                 // 图片宽度（像素）
-  height?: number | null;                // 图片高度（像素）
-  altText?: string | null;               // 图片描述（用于无障碍访问）
-  usageType: MediaUsageTypeLiteral;      // 用途类型（article=文章配图, avatar=头像, artwork=AI作品图片, general=通用）
-  uploaderName?: string | null;          // 上传者
-  createdAt?: number | null;             // 上传时间（毫秒级Unix时间戳）
-  updatedAt?: number | null;             // 更新时间（毫秒级Unix时间戳）
+  id: number; // 媒体文件ID
+  originalName: string; // 原始文件名
+  storedName: string; // 存储文件名（UUID格式）
+  filePath: string; // 服务端存储路径
+  fileUrl: string; // 访问URL
+  fileSize?: number | null; // 文件大小（字节）
+  mimeType?: string | null; // MIME类型（如：image/jpeg）
+  width?: number | null; // 图片宽度（像素）
+  height?: number | null; // 图片高度（像素）
+  altText?: string | null; // 图片描述（用于无障碍访问）
+  usageType: MediaUsageTypeLiteral; // 用途类型（article=文章配图, avatar=头像, artwork=AI作品图片, general=通用）
+  uploaderName?: string | null; // 上传者
+  fileHash?: string | null; // 文件MD5（用于大文件秒传）
+  createdAt?: number | null; // 上传时间（毫秒级Unix时间戳）
+  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
 export type MediaFileCreationAttributes = Optional<
   MediaFileAttributes,
-  'id' | 'fileSize' | 'mimeType' | 'width' | 'height' | 'altText' | 'usageType' | 'uploaderName' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'fileSize'
+  | 'mimeType'
+  | 'width'
+  | 'height'
+  | 'altText'
+  | 'usageType'
+  | 'uploaderName'
+  | 'fileHash'
+  | 'createdAt'
+  | 'updatedAt'
 >;
 
 // 模型类
@@ -52,6 +57,7 @@ export class MediaFile
   declare altText: string | null;
   declare usageType: MediaUsageTypeLiteral;
   declare uploaderName: string | null;
+  declare fileHash: string | null;
   declare createdAt: number | null;
   declare updatedAt: number | null;
 
@@ -128,6 +134,11 @@ export function initMediaFileModel(sequelize: Sequelize): typeof MediaFile {
         allowNull: true,
         comment: '上传者',
       },
+      fileHash: {
+        type: DataTypes.STRING(32),
+        allowNull: true,
+        comment: '文件MD5，用于大文件秒传',
+      },
       createdAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
@@ -166,6 +177,9 @@ export function initMediaFileModel(sequelize: Sequelize): typeof MediaFile {
         },
         {
           fields: ['uploader_name'],
+        },
+        {
+          fields: ['file_hash'],
         },
       ],
       comment: '媒体文件管理表',

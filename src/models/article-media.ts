@@ -1,21 +1,16 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 import { ArticleMediaUsageLiteral } from './enums';
 
 /**
  * 文章媒体关联属性接口
  */
 export interface ArticleMediaAttributes {
-  id?: number;                           // 关联ID（可选，创建时自动生成）
-  articleId: number;                     // 文章ID
-  mediaId: number;                       // 媒体文件ID
-  usageType: ArticleMediaUsageLiteral;   // 使用类型（thumbnail=缩略图, featured=头图, content=内容图）
-  sortOrder: number;                     // 排序权重（数字越小越靠前）
-  createdAt?: number | null;             // 创建时间（毫秒级Unix时间戳）
+  id?: number; // 关联ID（可选，创建时自动生成）
+  articleId: number; // 文章ID
+  mediaId: number; // 媒体文件ID
+  usageType: ArticleMediaUsageLiteral; // 使用类型（thumbnail=缩略图, featured=头图, content=内容图）
+  sortOrder: number; // 排序权重（数字越小越靠前）
+  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -38,9 +33,7 @@ export class ArticleMedia
 }
 
 // 初始化函数
-export function initArticleMediaModel(
-  sequelize: Sequelize
-): typeof ArticleMedia {
+export function initArticleMediaModel(sequelize: Sequelize): typeof ArticleMedia {
   ArticleMedia.init(
     {
       id: {

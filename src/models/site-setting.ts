@@ -1,21 +1,16 @@
-import {
-  Model,
-  DataTypes,
-  Optional,
-  Sequelize,
-} from 'sequelize';
+import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 import { SettingTypeLiteral } from './enums';
 
 /**
  * 网站配置属性接口
  */
 export interface SiteSettingAttributes {
-  id: number;                            // 配置ID
-  settingKey: string;                    // 配置键名（唯一标识，如：site_title）
-  settingValue?: string | null;          // 配置值
-  settingType: SettingTypeLiteral;       // 值类型（string=字符串, number=数字, boolean=布尔, json=JSON）
-  description?: string | null;           // 配置说明
-  updatedAt?: number | null;             // 更新时间（毫秒级Unix时间戳）
+  id: number; // 配置ID
+  settingKey: string; // 配置键名（唯一标识，如：site_title）
+  settingValue?: string | null; // 配置值
+  settingType: SettingTypeLiteral; // 值类型（string=字符串, number=数字, boolean=布尔, json=JSON）
+  description?: string | null; // 配置说明
+  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */

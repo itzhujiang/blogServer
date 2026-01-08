@@ -21,6 +21,9 @@ export { ArticleCategory, initArticleCategoryModel } from './article-category';
 export { ArticleMedia, initArticleMediaModel } from './article-media';
 export { ArtworkMedia, initArtworkMediaModel } from './artwork-media';
 export { AdminUser, initAdminUserModel } from './admin-user';
+export { TempMedia, initTempMediaModel, TEMP_FILE_EXPIRY } from './temp-media';
+export { BigFileRecord, initBigFileRecordModel } from './big-file-record';
+export { BigFileChunk, initBigFileChunkModel } from './big-file-chunk';
 
 // 类型导出
 export type { CategoryAttributes, CategoryCreationAttributes } from './category';
@@ -31,10 +34,16 @@ export type { AIArtworkAttributes, AIArtworkCreationAttributes } from './ai-artw
 export type { SiteSettingAttributes, SiteSettingCreationAttributes } from './site-setting';
 export type { AboutPageAttributes, AboutPageCreationAttributes } from './about-page';
 export type { SearchLogAttributes, SearchLogCreationAttributes } from './search-log';
-export type { ArticleCategoryAttributes, ArticleCategoryCreationAttributes } from './article-category';
+export type {
+  ArticleCategoryAttributes,
+  ArticleCategoryCreationAttributes,
+} from './article-category';
 export type { ArticleMediaAttributes, ArticleMediaCreationAttributes } from './article-media';
 export type { ArtworkMediaAttributes, ArtworkMediaCreationAttributes } from './artwork-media';
 export type { AdminUserAttributes, AdminUserCreationAttributes } from './admin-user';
+export type { TempMediaAttributes, TempMediaCreationAttributes } from './temp-media';
+export type { BigFileRecordAttributes, BigFileRecordCreationAttributes } from './big-file-record';
+export type { BigFileChunkAttributes, BigFileChunkCreationAttributes } from './big-file-chunk';
 
 /**
  * 初始化所有模型
@@ -57,6 +66,9 @@ export async function initAllModels(force = false, alter = false) {
   const { initArticleMediaModel } = await import('./article-media');
   const { initArtworkMediaModel } = await import('./artwork-media');
   const { initAdminUserModel } = await import('./admin-user');
+  const { initTempMediaModel } = await import('./temp-media');
+  const { initBigFileRecordModel } = await import('./big-file-record');
+  const { initBigFileChunkModel } = await import('./big-file-chunk');
 
   // 初始化所有模型
   const Category = initCategoryModel(sequelize);
@@ -71,6 +83,9 @@ export async function initAllModels(force = false, alter = false) {
   const ArticleMedia = initArticleMediaModel(sequelize);
   const ArtworkMedia = initArtworkMediaModel(sequelize);
   const AdminUser = initAdminUserModel(sequelize);
+  const TempMedia = initTempMediaModel(sequelize);
+  const BigFileRecord = initBigFileRecordModel(sequelize);
+  const BigFileChunk = initBigFileChunkModel(sequelize);
 
   // 定义模型关联关系
 
@@ -208,6 +223,12 @@ export async function initAllModels(force = false, alter = false) {
     as: 'media',
   });
 
+  // === 大文件系统关联 ===
+  // 注意：BigFileRecord.identifier 是 VARCHAR(36)，BigFileChunk.fileIdentifier 也是 VARCHAR(36)
+  // 由于不是自增 ID 外键，不创建数据库外键约束，只保留逻辑关联
+  // BigFileRecord.hasMany(BigFileChunk, { foreignKey: 'fileIdentifier', as: 'chunks', onDelete: 'CASCADE' });
+  // BigFileChunk.belongsTo(BigFileRecord, { foreignKey: 'fileIdentifier', as: 'fileRecord' });
+
   // === 同步数据库 ===
   const syncOptions: { force: boolean; alter: boolean } = { force, alter };
   await sequelize.sync(syncOptions);
@@ -225,6 +246,9 @@ export async function initAllModels(force = false, alter = false) {
     ArticleMedia,
     ArtworkMedia,
     AdminUser,
+    TempMedia,
+    BigFileRecord,
+    BigFileChunk,
   };
 }
 

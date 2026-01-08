@@ -7,9 +7,12 @@ import { loginValidation, handleValidationErrors } from '../../validators/index'
 const router = express.Router();
 
 // 登录接口 - POST /api/user/admin/login
-router.post("/login", [...loginValidation, handleValidationErrors], asyncHandler<LoginRequsetType, LoginResponseType, 'post'>(async (req, _res) => {
-    return await login(req.body)
-}))
+router.post(
+  '/login',
+  [...loginValidation, handleValidationErrors],
+  asyncHandler<LoginRequsetType, LoginResponseType, 'post'>(async (req, _res) => {
+    return await login(req.body);
+  })
+);
 
-
-export default router
+export default router;
