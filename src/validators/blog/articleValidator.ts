@@ -44,8 +44,35 @@ export const getArticleListValidation = [
   query('viewCountSort').optional().isIn(['asc', 'desc']).withMessage('排序方式必须是 asc 或 desc'),
 ];
 
+/**
+ * 添加文章验证规则
+ */
 export const addArticleValidation = [
-  body('title').isEmpty().withMessage('请输入标题'),
-  body('slug').isEmpty().withMessage('请输入URL友好标识'),
-  body('excerpt').isEmpty().withMessage('请输入文章摘要'),
+  body('title').notEmpty().withMessage('请输入标题'),
+  body('slug').notEmpty().withMessage('请输入URL友好标识'),
+  body('thumbnailCode').optional().isString().withMessage('封面图片代码必须是字符串'),
+  body('excerpt').notEmpty().withMessage('请输入文章摘要'),
+  body('articleCode').notEmpty().withMessage('请上传文章内容'),
+  body('attachmentCode').optional().isArray().withMessage('文章附件必须是数组'),
+  body('categories').optional().isArray().withMessage('文章分类必须是数组'),
 ];
+
+/**
+ * 修改文章验证规则
+ */
+export const updateArticleValidation = [
+  body('id').notEmpty().isInt({ min: 1 }).withMessage('文章ID必须是正整数').toInt(),
+  body('title').optional().notEmpty().withMessage('请输入标题'),
+  body('slug').optional().notEmpty().withMessage('请输入URL友好标识'),
+  body('thumbnailCode').optional().isString().withMessage('封面图片代码必须是字符串'),
+  body('excerpt').optional().notEmpty().withMessage('请输入文章摘要'),
+  body('articleCode').optional().notEmpty().withMessage('请上传文章内容'),
+  body('attachmentCode').optional().isArray().withMessage('文章附件必须是数组'),
+  body('categories').optional().isArray().withMessage('文章分类必须是数组'),
+  body('isUpdateArticle').optional().isBoolean().withMessage('是否更新文章必须是布尔值'),
+  body('isUpdateThumbnail').optional().isBoolean().withMessage('是否更新缩略图必须是布尔值'),
+]
+
+export const delArticleValidation = [
+  query('id').notEmpty().isInt({ min: 1 }).withMessage('文章ID必须是正整数').toInt(),
+]

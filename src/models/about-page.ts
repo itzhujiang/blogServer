@@ -1,4 +1,30 @@
-import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
+import { Model, DataTypes, Optional, Association, Sequelize } from 'sequelize';
+import { AboutPageMedia } from './about-page-media';
+
+/**
+ * 技能项接口
+ */
+export interface AboutSkillItem {
+  name: string;   // 技能名称（如：React）
+  level: number;  // 熟练度 0-100
+}
+
+/**
+ * 技能分类接口
+ */
+export interface AboutSkill {
+  category: string;           // 技能分类名称（如：前端开发）
+  items: AboutSkillItem[];    // 该分类下的技能列表
+}
+
+/**
+ * 成长足迹项接口
+ */
+export interface AboutTimelineItem {
+  timestamp: number;   // 时间戳（毫秒级Unix时间戳）
+  title: string;       // 标题（如：开启博客之旅）
+  description: string; // 描述
+}
 
 /**
  * 关于我页面属性接口
@@ -6,18 +32,29 @@ import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 export interface AboutPageAttributes {
   id: number; // 页面ID
   title: string; // 页面标题
-  content: string; // 页面内容（Markdown格式）
-  avatarUrl?: string | null; // 头像URL
-  contactInfo?: Record<string, unknown> | null; // 联系方式，JSON格式（如：{email, location}）
-  socialLinks?: Record<string, unknown> | null; // 社交媒体链接，JSON格式（如：{github, twitter}）
-  skills?: string[] | null; // 技能标签，字符串数组（如：["Web开发", "AI艺术"]）
+  nickname?: string | null; // 博主昵称（如：木心）
+  jobTitle?: string | null; // 职业标签（如：前端开发者 & UI设计师）
+  content: string; // 页面内容（个人简介）
+  personalTags?: string[] | null; // 个人标签数组（如：["热爱学习的技术人", "AI创作探索者"]）
+  contactInfo?: Record<string, unknown> | null; // 联系方式，JSON格式（如：{email, github, wechat}）
+  socialLinks?: Record<string, unknown> | null; // 社交媒体链接，JSON格式（如：{twitter, dribbble, instagram}）
+  skills?: AboutSkill[] | null; // 技能专长，结构化JSON格式
+  timeline?: AboutTimelineItem[] | null; // 成长足迹，时间线数据
   updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
 export type AboutPageCreationAttributes = Optional<
   AboutPageAttributes,
-  'id' | 'avatarUrl' | 'contactInfo' | 'socialLinks' | 'skills' | 'updatedAt'
+  | 'id'
+  | 'nickname'
+  | 'jobTitle'
+  | 'personalTags'
+  | 'contactInfo'
+  | 'socialLinks'
+  | 'skills'
+  | 'timeline'
+  | 'updatedAt'
 >;
 
 // 模型类
@@ -27,12 +64,20 @@ export class AboutPage
 {
   declare id: number;
   declare title: string;
+  declare nickname: string | null;
+  declare jobTitle: string | null;
   declare content: string;
-  declare avatarUrl: string | null;
+  declare personalTags: string[] | null;
   declare contactInfo: Record<string, unknown> | null;
   declare socialLinks: Record<string, unknown> | null;
-  declare skills: string[] | null;
+  declare skills: AboutSkill[] | null;
+  declare timeline: AboutTimelineItem[] | null;
   declare updatedAt: number | null;
+
+  // 关联
+  declare static associations: {
+    aboutPageMedias: Association<AboutPage, AboutPageMedia>;
+  };
 }
 
 // 初始化函数
@@ -51,15 +96,25 @@ export function initAboutPageModel(sequelize: Sequelize): typeof AboutPage {
         defaultValue: '关于我',
         comment: '页面标题',
       },
+      nickname: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        comment: '博主昵称',
+      },
+      jobTitle: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        comment: '职业标签',
+      },
       content: {
         type: DataTypes.TEXT,
         allowNull: false,
-        comment: '页面内容',
+        comment: '页面内容（个人简介）',
       },
-      avatarUrl: {
-        type: DataTypes.STRING(500),
+      personalTags: {
+        type: DataTypes.JSONB,
         allowNull: true,
-        comment: '头像URL',
+        comment: '个人标签数组',
       },
       contactInfo: {
         type: DataTypes.JSONB,
@@ -74,7 +129,12 @@ export function initAboutPageModel(sequelize: Sequelize): typeof AboutPage {
       skills: {
         type: DataTypes.JSONB,
         allowNull: true,
-        comment: '技能标签，JSON格式',
+        comment: '技能专长，结构化JSON格式 [{category, items: [{name, level}]}]',
+      },
+      timeline: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        comment: '成长足迹，时间线JSON格式 [{timestamp, title, description}]',
       },
       updatedAt: {
         type: DataTypes.BIGINT,

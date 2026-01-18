@@ -6,16 +6,11 @@ import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 export interface ArticleCategoryAttributes {
   articleId: number; // 文章ID
   categoryId: number; // 分类ID
-  isPrimary: boolean; // 是否主分类（true=主分类，false=次分类）
-  sortOrder: number; // 排序权重（数字越小越靠前）
   createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
-export type ArticleCategoryCreationAttributes = Optional<
-  ArticleCategoryAttributes,
-  'isPrimary' | 'sortOrder' | 'createdAt'
->;
+export type ArticleCategoryCreationAttributes = Optional<ArticleCategoryAttributes, 'createdAt'>;
 
 // 模型类
 export class ArticleCategory
@@ -24,8 +19,6 @@ export class ArticleCategory
 {
   declare articleId: number;
   declare categoryId: number;
-  declare isPrimary: boolean;
-  declare sortOrder: number;
   declare createdAt: number | null;
 }
 
@@ -43,18 +36,6 @@ export function initArticleCategoryModel(sequelize: Sequelize): typeof ArticleCa
         allowNull: false,
         comment: '分类ID',
       },
-      isPrimary: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-        comment: '是否主分类',
-      },
-      sortOrder: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0,
-        comment: '排序权重',
-      },
       createdAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
@@ -68,7 +49,8 @@ export function initArticleCategoryModel(sequelize: Sequelize): typeof ArticleCa
       timestamps: false,
       hooks: {
         beforeCreate: (instance: ArticleCategory) => {
-          instance.createdAt = Date.now();
+          const now = Date.now();
+          instance.createdAt = now;
         },
       },
       indexes: [
@@ -77,9 +59,6 @@ export function initArticleCategoryModel(sequelize: Sequelize): typeof ArticleCa
         },
         {
           fields: ['category_id'],
-        },
-        {
-          fields: ['is_primary'],
         },
       ],
       comment: '文章分类关联表',

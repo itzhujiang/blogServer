@@ -19,7 +19,7 @@ export interface MediaFileAttributes {
   altText?: string | null; // 图片描述（用于无障碍访问）
   usageType: MediaUsageTypeLiteral; // 用途类型（article=文章配图, avatar=头像, artwork=AI作品图片, general=通用）
   uploaderName?: string | null; // 上传者
-  fileHash?: string | null; // 文件MD5（用于大文件秒传）
+  fileHash: string; // 文件MD5
   createdAt?: number | null; // 上传时间（毫秒级Unix时间戳）
   updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
 }
@@ -57,7 +57,7 @@ export class MediaFile
   declare altText: string | null;
   declare usageType: MediaUsageTypeLiteral;
   declare uploaderName: string | null;
-  declare fileHash: string | null;
+  declare fileHash: string;
   declare createdAt: number | null;
   declare updatedAt: number | null;
 
@@ -136,8 +136,8 @@ export function initMediaFileModel(sequelize: Sequelize): typeof MediaFile {
       },
       fileHash: {
         type: DataTypes.STRING(32),
-        allowNull: true,
-        comment: '文件MD5，用于大文件秒传',
+        allowNull: false,
+        comment: '文件MD5，用于大文件秒传和去重',
       },
       createdAt: {
         type: DataTypes.BIGINT,

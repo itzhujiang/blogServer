@@ -1,6 +1,6 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import multer, { MulterError } from 'multer';
-import { MAX_FILE_SIZE } from '../../validators/blog/mediaFileValidator';
+import { uploadValidation, handleValidationErrors } from '../../validators';
 import { asyncHandler } from '../../utils/getSendResult';
 import {
   UploadRequsetType,
@@ -24,7 +24,7 @@ const router = express.Router();
 // 配置 multer，限制文件大小（用于单文件上传）
 const upload = multer({
   limits: {
-    fileSize: MAX_FILE_SIZE,
+    fileSize: 2 * 1024 * 1024, // 2MB
   },
 });
 
@@ -52,12 +52,13 @@ const handleUploadError = (err: Error | null, res: express.Response): boolean =>
  */
 router.post(
   '/upload',
-  (req: Request, res: Response, next) => {
+  (req: Request, res: Response, next: NextFunction) => {
     upload.single('file')(req, res, err => {
       if (handleUploadError(err, res)) return;
       next();
     });
   },
+  [...uploadValidation, handleValidationErrors],
   asyncHandler<UploadRequsetType, UploadResponseType, 'post'>(async req => {
     if (!req.file) {
       return { err: '请上传文件' };
@@ -84,7 +85,7 @@ router.post(
  */
 router.post(
   '/bigFileChunk',
-  (req: Request, res: Response, next) => {
+  (req: Request, res: Response, next: NextFunction) => {
     chunkUpload.single('file')(req, res, err => {
       if (err instanceof MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
@@ -95,6 +96,7 @@ router.post(
       next();
     });
   },
+  [...uploadValidation, handleValidationErrors],
   asyncHandler<BigFileChunkRequestType, BigFileChunkResponseType, 'post'>(async req => {
     if (!req.file) {
       return { err: '请上传分片文件' };

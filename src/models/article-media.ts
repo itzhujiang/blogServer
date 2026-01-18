@@ -8,15 +8,15 @@ export interface ArticleMediaAttributes {
   id?: number; // 关联ID（可选，创建时自动生成）
   articleId: number; // 文章ID
   mediaId: number; // 媒体文件ID
-  usageType: ArticleMediaUsageLiteral; // 使用类型（thumbnail=缩略图, featured=头图, content=内容图）
-  sortOrder: number; // 排序权重（数字越小越靠前）
+  usageType: ArticleMediaUsageLiteral; // 使用类型（thumbnail=缩略图, attachment=附件图, content=文章内容）
+  sortOrder: number; // 排序权重
   createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
 export type ArticleMediaCreationAttributes = Optional<
   ArticleMediaAttributes,
-  'id' | 'usageType' | 'sortOrder' | 'createdAt'
+  'id' | 'usageType' | 'createdAt'
 >;
 
 // 模型类
@@ -53,10 +53,10 @@ export function initArticleMediaModel(sequelize: Sequelize): typeof ArticleMedia
         comment: '媒体文件ID',
       },
       usageType: {
-        type: DataTypes.ENUM('thumbnail', 'featured', 'content'),
+        type: DataTypes.ENUM('thumbnail', 'attachment'),
         allowNull: false,
-        defaultValue: 'content',
-        comment: '使用类型 (thumbnail=缩略图, featured=头图, content=内容图)',
+        defaultValue: 'attachment',
+        comment: '使用类型 (thumbnail=缩略图, attachment=附件图)',
       },
       sortOrder: {
         type: DataTypes.INTEGER,
@@ -78,6 +78,9 @@ export function initArticleMediaModel(sequelize: Sequelize): typeof ArticleMedia
       hooks: {
         beforeCreate: (instance: ArticleMedia) => {
           instance.createdAt = Date.now();
+          if (!instance.sortOrder) {
+            instance.sortOrder = 0;
+          }
         },
       },
       indexes: [

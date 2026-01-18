@@ -5,6 +5,7 @@ export type ReqType = 'post' | 'get' | 'put' | 'del';
 export interface UserPayload {
   id: number;
   username: string;
+  name: string;
 }
 
 export type ResBodyType<T = never> = {
@@ -25,7 +26,9 @@ export type ResponseType<T = never> = Response<ResBodyType<T>>;
 export type ParameBodyType<T = {}> = {
   page?: number;
   size?: number;
-} & T;
+} & T & {
+    user?: UserPayload;
+  };
 
 // POST/PUT/PATCH 请求，类型在请求体(第三个泛型)
 export type RequestBodyType<T = {}> = Request<

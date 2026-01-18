@@ -30,6 +30,7 @@ const login = async (adminObj: LoginRequsetType): Promise<HandlerResult<LoginRes
     const token = issueJwt(3600 * 24 * 7, {
       id: admin.id,
       username: admin.username,
+      name: admin.displayName || '翎羽',
     });
     return {
       data: {

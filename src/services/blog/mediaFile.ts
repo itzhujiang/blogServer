@@ -1,11 +1,13 @@
 import fs from 'fs/promises';
 import path from 'path';
+import md5 from 'md5';
 import { v4 as uuidv4 } from 'uuid';
 import { HandlerResult } from '../../utils/getSendResult';
 import { TempMedia, TEMP_FILE_EXPIRY } from '../../models/temp-media';
 import { MediaFile } from '../../models/media-file';
-import { BigFileRecord, BigFileChunk } from '../../models';
+import { BigFileRecord, BigFileChunk, MediaUsageTypeLiteral } from '../../models';
 import { sequelize } from '../../models/db';
+import { Transaction } from 'sequelize';
 
 // 默认分片大小 2MB
 const DEFAULT_CHUNK_SIZE = 2 * 1024 * 1024;
@@ -36,10 +38,14 @@ type UploadResponseType = {
  * 确认使用临时媒体文件的结果
  */
 type ConfirmResultType = {
+  /** 上传时的文件凭证code */
+  fileCode: string;
   /** 永久文件ID */
   mediaId: number;
   /** 永久文件URL */
   fileUrl: string;
+  /** 移动文件到永久目录（事务提交后调用） */
+  moveFiles: () => Promise<void>;
 };
 
 // ==================== 大文件上传相关类型 ====================
@@ -53,11 +59,11 @@ type BigFileInitRequestType = {
   /** 文件大小（字节） */
   fileSize: number;
   /** MIME 类型 */
-  mimeType: string;
+  mimeType: MediaUsageTypeLiteral;
+  /** 文件 MD5（用于秒传和文件标识） */
+  fileHash: string;
   /** 分片大小（可选，默认 2MB） */
   chunkSize?: number;
-  /** 文件 MD5（可选，用于秒传） */
-  fileHash?: string;
 };
 
 /**
@@ -192,83 +198,170 @@ const UploadFile = async (param: UploadRequsetType): Promise<HandlerResult<Uploa
 
 /**
  * 确认使用临时媒体文件
- * 将临时文件移动到永久目录，并在 media_files 表创建记录
- * @param code - 临时文件凭证
- * @returns 永久文件信息
+ * 将临时文件确认，创建数据库记录
+ * 支持文件去重：相同文件只保存一份
+ * @param codes - 临时文件凭证数组
+ * @param externalTransaction - 可选的外部事务（用于跨操作事务）
+ * @returns 永久文件信息数组（包含 moveFiles 方法，事务提交后调用）
  */
-const confirmTempMedia = async (code: string): Promise<HandlerResult<ConfirmResultType>> => {
-  // 查询临时文件记录
-  const tempMedia = await TempMedia.findByPk(code);
+const confirmTempMedia = async (
+  codes: string[],
+  externalTransaction?: Transaction
+): Promise<HandlerResult<ConfirmResultType[]>> => {
+  const transaction = externalTransaction || (await sequelize.transaction());
+  const shouldAutoCommit = !externalTransaction;
 
-  if (!tempMedia) {
-    return { err: '临时文件不存在', code: 500 };
-  }
+  // 批量查询临时文件记录
+  const tempMedias = await TempMedia.findAll({
+    where: { code: codes },
+  });
 
-  // 检查是否已使用
-  if (tempMedia.isUsed) {
-    return { err: '临时文件已被使用', code: 500 };
-  }
-
-  // 检查是否过期
-  if (Date.now() > tempMedia.expiresAt) {
-    // 清理过期文件
-    try {
-      await fs.unlink(path.join(process.cwd(), tempMedia.filePath));
-    } catch (e) {
-      // 忽略删除错误
+  // 检查是否所有 code 都存在
+  const foundCodes = new Set(tempMedias.map(tm => tm.code));
+  const missingCode = codes.find(c => !foundCodes.has(c));
+  if (missingCode) {
+    if (shouldAutoCommit) {
+      await transaction.rollback();
     }
-    await tempMedia.destroy();
-    return { err: '临时文件已过期', code: 500 };
+    return { err: `文件未上传: ${missingCode}`, code: 500 };
   }
 
-  const transaction = await sequelize.transaction();
+  const results: ConfirmResultType[] = [];
+  const now = Date.now();
 
-  try {
-    // 移动文件到永久目录
-    const year = new Date().getFullYear().toString();
-    const month = (new Date().getMonth() + 1).toString().padStart(2, '0');
-    const permDir = path.join(process.cwd(), 'uploads', 'file', year, month);
-    await ensureDir(permDir);
+  // 遍历处理每个文件
+  for (const code of codes) {
+    const tempMedia = tempMedias.find(tm => tm.code === code)!;
 
-    const newStoredName = `${uuidv4()}${path.extname(tempMedia.storedName)}`;
-    const newFilePath = path.join(permDir, newStoredName);
+    // 检查是否已使用
+    if (tempMedia.isUsed) {
+      if (shouldAutoCommit) {
+        await transaction.rollback();
+      }
+      return { err: '临时文件已被使用', code: 500 };
+    }
+
+    // 检查是否过期
+    if (now > tempMedia.expiresAt) {
+      // 清理过期文件
+      try {
+        await fs.unlink(path.join(process.cwd(), tempMedia.filePath));
+      } catch (e) {
+        // 忽略删除错误
+      }
+      await tempMedia.destroy();
+      if (shouldAutoCommit) {
+        await transaction.rollback();
+      }
+      return { err: '临时文件已过期', code: 500 };
+    }
+
     const oldFilePath = path.join(process.cwd(), tempMedia.filePath);
 
-    // 移动文件
-    await fs.rename(oldFilePath, newFilePath);
+    try {
+      // 读取文件内容并计算 MD5 hash
+      const fileBuffer = await fs.readFile(oldFilePath);
+      const fileHash = md5(fileBuffer);
 
-    // 创建永久媒体记录
-    const mediaFile = await MediaFile.create(
-      {
-        originalName: tempMedia.originalName,
-        storedName: newStoredName,
-        filePath: path.join('uploads', 'file', year, month, newStoredName),
-        fileUrl: `/uploads/file/${year}/${month}/${newStoredName}`,
-        fileSize: Number(tempMedia.fileSize),
-        mimeType: tempMedia.mimeType,
-        usageType: 'general',
-        createdAt: Date.now(),
-      },
-      { transaction }
-    );
+      // 查询是否已存在相同文件（去重）
+      const existingFile = await MediaFile.findOne({
+        where: { fileHash },
+      });
 
-    // 标记临时文件已使用
-    tempMedia.isUsed = true;
-    await tempMedia.save({ transaction });
+      if (existingFile) {
+        // 文件已存在，删除临时文件
+        try {
+          await fs.unlink(oldFilePath);
+        } catch (e) {
+          // 忽略删除错误
+        }
 
-    await transaction.commit();
+        // 标记临时文件已使用（使用传入的事务）
+        tempMedia.isUsed = true;
+        await tempMedia.save({ transaction });
 
-    return {
-      data: {
+        results.push({
+          fileCode: code,
+          mediaId: existingFile.id,
+          fileUrl: existingFile.fileUrl,
+          moveFiles: async () => {}, // 已存在文件，无需移动
+        });
+        continue;
+      }
+
+      // 文件不存在，创建新记录（使用临时路径）
+      // 注意：文件移动在 moveFiles 中执行
+      const mediaFile = await MediaFile.create(
+        {
+          originalName: tempMedia.originalName,
+          storedName: tempMedia.storedName,
+          filePath: tempMedia.filePath, // 临时路径
+          fileUrl: `/uploads/temp/${tempMedia.storedName}`, // 临时URL
+          fileSize: Number(tempMedia.fileSize),
+          mimeType: tempMedia.mimeType,
+          usageType: 'general',
+          fileHash,
+          createdAt: now,
+        },
+        { transaction }
+      );
+
+      // 标记临时文件已使用
+      tempMedia.isUsed = true;
+      await tempMedia.save({ transaction });
+
+      // 保存 mediaFile 引用，用于移动函数
+      const mediaFileRef = mediaFile;
+
+      // 创建移动函数（事务提交后调用）
+      const moveFiles = async () => {
+        const year = new Date().getFullYear().toString();
+        const month = (new Date().getMonth() + 1).toString().padStart(2, '0');
+        const permDir = path.join(process.cwd(), 'uploads', 'file', year, month);
+        await ensureDir(permDir);
+
+        const newStoredName = `${uuidv4()}${path.extname(mediaFileRef.storedName)}`;
+        const newPath = path.join(permDir, newStoredName);
+
+        try {
+          // 移动文件
+          await fs.rename(path.join(process.cwd(), mediaFileRef.filePath), newPath);
+
+          // 更新记录路径
+          const newFilePath = path.join('uploads', 'file', year, month, newStoredName);
+          const newFileUrl = `/uploads/file/${year}/${month}/${newStoredName}`;
+
+          await mediaFileRef.update({
+            storedName: newStoredName,
+            filePath: newFilePath,
+            fileUrl: newFileUrl,
+          });
+        } catch (error) {
+          console.error('移动文件失败:', error);
+        }
+      };
+
+      results.push({
+        fileCode: code,
         mediaId: mediaFile.id,
         fileUrl: mediaFile.fileUrl,
-      },
-    };
-  } catch (error) {
-    await transaction.rollback();
-    console.error('确认临时文件失败:', error);
-    return { err: '确认临时文件失败', code: 500 };
+        moveFiles,
+      });
+    } catch (error) {
+      if (shouldAutoCommit) {
+        await transaction.rollback();
+      }
+      console.error('确认临时文件失败:', error);
+      throw new Error('确认临时文件失败:' + error);
+    }
   }
+
+  // 只有自己创建的事务才提交
+  if (shouldAutoCommit) {
+    await transaction.commit();
+  }
+
+  return { data: results };
 };
 
 /**
@@ -313,31 +406,27 @@ const initBigFileUpload = async (
   const actualChunkSize = chunkSize || DEFAULT_CHUNK_SIZE;
   const totalChunks = Math.ceil(fileSize / actualChunkSize);
   const now = Date.now();
+  const identifier = fileHash;
 
-  // 秒传检查：如果传入了 fileHash，查询是否已存在相同文件
-  if (fileHash) {
-    const existingFile = await MediaFile.findOne({
-      where: { fileHash },
-    });
+  // 秒传检查：查询是否已存在相同文件
+  const existingFile = await MediaFile.findOne({
+    where: { fileHash },
+  });
 
-    if (existingFile) {
-      return {
-        data: {
-          identifier: fileHash,
-          chunkSize: actualChunkSize,
-          totalChunks,
-          uploadedChunks: [], // 秒传时无需上传分片
-          isNew: false,
-          existingFileUrl: existingFile.fileUrl,
-        },
-      };
-    }
+  if (existingFile) {
+    return {
+      data: {
+        identifier,
+        chunkSize: actualChunkSize,
+        totalChunks,
+        uploadedChunks: [], // 秒传时无需上传分片
+        isNew: false,
+        existingFileUrl: existingFile.fileUrl,
+      },
+    };
   }
 
-  // 生成文件标识（使用 fileHash 或 UUID）
-  const identifier = fileHash || uuidv4();
-
-  // 检查是否已有上传记录
+  // 检查是否已有上传记录（断点续传）
   const existingRecord = await BigFileRecord.findByPk(identifier);
 
   if (existingRecord) {

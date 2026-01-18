@@ -134,13 +134,52 @@ async function seedInitialData() {
       const now = Date.now();
       await AboutPage.create({
         title: '关于我',
+        nickname: '木心',
+        jobTitle: '前端开发者 & UI设计师',
         content: '# 欢迎来到我的空间\n\n一个探索科技、设计、生活及AI创作潜能的个人博客。',
-        contactInfo: { email: 'example@email.com', location: '中国' },
-        socialLinks: {
-          github: 'https://github.com/username',
-          twitter: 'https://twitter.com/username',
+        personalTags: ['热爱学习的技术人', 'AI创作探索者'],
+        contactInfo: {
+          email: 'hello@mouxin.blog',
+          github: '@mouxin-dev',
+          wechat: 'mouxin_chat',
         },
-        skills: ['Web开发', '数据库设计', 'AI艺术', '极简主义设计'],
+        socialLinks: {
+          twitter: '#',
+          dribbble: '#',
+          instagram: '#',
+        },
+        skills: [
+          {
+            category: '前端开发',
+            items: [
+              { name: 'React & Next.js', level: 90 },
+              { name: 'Vue & Nuxt.js', level: 85 },
+              { name: 'Tailwind CSS', level: 95 },
+            ],
+          },
+          {
+            category: 'UI/UX 设计',
+            items: [
+              { name: 'Figma', level: 90 },
+              { name: '用户研究', level: 75 },
+              { name: '原型设计', level: 85 },
+            ],
+          },
+          {
+            category: '其他技能',
+            items: [
+              { name: 'Node.js', level: 70 },
+              { name: '摄影', level: 80 },
+              { name: '写作', level: 88 },
+            ],
+          },
+        ],
+        timeline: [
+          { timestamp: 1704067200000, title: '开启博客之旅', description: '创建"暖木博客"，记录技术与生活。' },
+          { timestamp: 1640995200000, title: '首次参与开源项目', description: '为一个小众UI库贡献了代码。' },
+          { timestamp: 1577808000000, title: '毕业 & 第一份工作', description: '作为前端开发工程师，正式踏入职场。' },
+          { timestamp: 1467302400000, title: '写下第一行代码', description: 'Hello World! 开启了对编程世界的探索。' },
+        ],
         updatedAt: now,
       });
       console.log('✓ 关于页面数据插入完成');

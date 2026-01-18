@@ -46,13 +46,11 @@ export enum MediaUsageType {
 /**
  * 文章媒体使用类型枚举
  * - thumbnail: 缩略图（文章列表展示用）
- * - featured: 头图（文章详情页顶部大图）
- * - content: 内容图（文章正文中的图片）
+ * - attachment: 附件图（文章正文中的图片）
  */
 export enum ArticleMediaUsage {
   THUMBNAIL = 'thumbnail',
-  FEATURED = 'featured',
-  CONTENT = 'content',
+  ATTACHMENT = 'attachment',
 }
 
 /**
@@ -97,7 +95,7 @@ export enum SettingType {
 export type ArticleStatusLiteral = 'draft' | 'published' | 'archived';
 export type CommentStatusLiteral = 'pending' | 'approved' | 'spam' | 'trash';
 export type MediaUsageTypeLiteral = 'article' | 'avatar' | 'artwork' | 'general';
-export type ArticleMediaUsageLiteral = 'thumbnail' | 'featured' | 'content';
+export type ArticleMediaUsageLiteral = 'thumbnail' | 'attachment' | 'content';
 export type ArtworkMediaUsageLiteral = 'main' | 'thumbnail' | 'process' | 'variant';
 export type ArtworkStatusLiteral = 'draft' | 'published';
 export type SettingTypeLiteral = 'string' | 'number' | 'boolean' | 'json';

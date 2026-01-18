@@ -21,6 +21,7 @@ export interface ArticleAttributes {
   publishedAt?: number | null; // 发布时间（毫秒级Unix时间戳）
   createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
   updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
+  deletedAt?: number | null; // 删除时间（软删除，毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -35,6 +36,7 @@ export type ArticleCreationAttributes = Optional<
   | 'publishedAt'
   | 'createdAt'
   | 'updatedAt'
+  | 'deletedAt'
 >;
 
 // 模型类
@@ -55,6 +57,7 @@ export class Article
   declare publishedAt: number | null;
   declare createdAt: number | null;
   declare updatedAt: number | null;
+  declare deletedAt: number | null;
 
   // 关联
   declare static associations: {
@@ -139,12 +142,19 @@ export function initArticleModel(sequelize: Sequelize): typeof Article {
         allowNull: false,
         comment: '更新时间（毫秒级Unix时间戳）',
       },
+      deletedAt: {
+        type: DataTypes.BIGINT,
+        allowNull: true,
+        comment: '删除时间（软删除，毫秒级Unix时间戳）',
+      },
     },
     {
       sequelize,
       tableName: 'articles',
       underscored: true,
-      timestamps: false,
+      timestamps: true,
+      paranoid: true, // 启用软删除
+      deletedAt: 'deleted_at', // 软删除字段名
       hooks: {
         beforeCreate: (instance: Article) => {
           const now = Date.now();
@@ -157,6 +167,10 @@ export function initArticleModel(sequelize: Sequelize): typeof Article {
         },
         beforeUpdate: (instance: Article) => {
           instance.updatedAt = Date.now();
+        },
+        beforeRestore: (instance: Article) => {
+          // 恢复时清除 deletedAt
+          instance.deletedAt = null as unknown as number;
         },
       },
       indexes: [

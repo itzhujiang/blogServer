@@ -16,6 +16,7 @@ export { Comment, initCommentModel } from './comment';
 export { AIArtwork, initAIArtworkModel } from './ai-artwork';
 export { SiteSetting, initSiteSettingModel } from './site-setting';
 export { AboutPage, initAboutPageModel } from './about-page';
+export { AboutPageMedia, initAboutPageMediaModel } from './about-page-media';
 export { SearchLog, initSearchLogModel } from './search-log';
 export { ArticleCategory, initArticleCategoryModel } from './article-category';
 export { ArticleMedia, initArticleMediaModel } from './article-media';
@@ -32,7 +33,7 @@ export type { ArticleAttributes, ArticleCreationAttributes } from './article';
 export type { CommentAttributes, CommentCreationAttributes } from './comment';
 export type { AIArtworkAttributes, AIArtworkCreationAttributes } from './ai-artwork';
 export type { SiteSettingAttributes, SiteSettingCreationAttributes } from './site-setting';
-export type { AboutPageAttributes, AboutPageCreationAttributes } from './about-page';
+export type { AboutPageAttributes, AboutPageCreationAttributes, AboutSkill, AboutSkillItem, AboutTimelineItem } from './about-page';
 export type { SearchLogAttributes, SearchLogCreationAttributes } from './search-log';
 export type {
   ArticleCategoryAttributes,
@@ -61,6 +62,7 @@ export async function initAllModels(force = false, alter = false) {
   const { initAIArtworkModel } = await import('./ai-artwork');
   const { initSiteSettingModel } = await import('./site-setting');
   const { initAboutPageModel } = await import('./about-page');
+  const { initAboutPageMediaModel } = await import('./about-page-media');
   const { initSearchLogModel } = await import('./search-log');
   const { initArticleCategoryModel } = await import('./article-category');
   const { initArticleMediaModel } = await import('./article-media');
@@ -78,6 +80,7 @@ export async function initAllModels(force = false, alter = false) {
   const AIArtwork = initAIArtworkModel(sequelize);
   const SiteSetting = initSiteSettingModel(sequelize);
   const AboutPage = initAboutPageModel(sequelize);
+  const AboutPageMedia = initAboutPageMediaModel(sequelize);
   const SearchLog = initSearchLogModel(sequelize);
   const ArticleCategory = initArticleCategoryModel(sequelize);
   const ArticleMedia = initArticleMediaModel(sequelize);
@@ -223,6 +226,30 @@ export async function initAllModels(force = false, alter = false) {
     as: 'media',
   });
 
+  // === 关于我页面关联 ===
+
+  // AboutPage <-> AboutPageMedia
+  AboutPage.hasMany(AboutPageMedia, {
+    foreignKey: 'aboutPageId',
+    as: 'aboutPageMedias',
+    onDelete: 'CASCADE',
+  });
+  AboutPageMedia.belongsTo(AboutPage, {
+    foreignKey: 'aboutPageId',
+    as: 'aboutPage',
+  });
+
+  // MediaFile <-> AboutPageMedia
+  MediaFile.hasMany(AboutPageMedia, {
+    foreignKey: 'mediaId',
+    as: 'aboutPageMedias',
+    onDelete: 'RESTRICT',
+  });
+  AboutPageMedia.belongsTo(MediaFile, {
+    foreignKey: 'mediaId',
+    as: 'media',
+  });
+
   // === 大文件系统关联 ===
   // 注意：BigFileRecord.identifier 是 VARCHAR(36)，BigFileChunk.fileIdentifier 也是 VARCHAR(36)
   // 由于不是自增 ID 外键，不创建数据库外键约束，只保留逻辑关联
@@ -241,6 +268,7 @@ export async function initAllModels(force = false, alter = false) {
     AIArtwork,
     SiteSetting,
     AboutPage,
+    AboutPageMedia,
     SearchLog,
     ArticleCategory,
     ArticleMedia,
