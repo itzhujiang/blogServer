@@ -56,19 +56,7 @@ type ArticleItemType = Pick<
 /**
  * 文章列表响应类型
  */
-type ArticleListResponseType = {
-  /** 文章列表 */
-  data: ArticleItemType[];
-  /** 分页信息 */
-  pagination: {
-    /** 当前页码 */
-    page: number;
-    /** 每页数量 */
-    size: number;
-    /** 总数 */
-    total: number;
-  };
-};
+type ArticleListResponseType = ArticleItemType;
 
 /**
  * 获取文章列表
@@ -343,7 +331,9 @@ const addArticle = async (
         const tempToPermanentMapping = new Map<string, string>();
         if (param.attachmentCode) {
           param.attachmentCode.forEach(code => {
-            const fileInfo = confirmResult.data.find(item => item.fileCode === code);
+            const fileInfo = (confirmResult.data?.data as ConfirmResultType[]).find(
+              item => item.fileCode === code
+            );
             if (fileInfo) {
               tempToPermanentMapping.set(fileInfo.fileCode, fileInfo.fileUrl);
             }

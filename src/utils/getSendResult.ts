@@ -9,15 +9,12 @@ type ErrorResult = {
   code?: ResBodyType<unknown>['code'];
 };
 
+type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
 /**
  * 成功结果类型
  */
-type SuccessResult<T = unknown> = {
-  /** 消息 */
-  msg?: string;
-  /** 数据 */
-  data: T;
-};
+type SuccessResult<T = unknown> = Optional<Pick<ResBodyType<T>, 'data' | 'msg'>, 'msg'>;
 
 /**
  * Handler 返回类型
@@ -52,11 +49,14 @@ const sendErr = <T = never>(
 
 /**
  * 发送成功信息
- * @param data 服务数据
+ * @param data 服务数据（包含 data 和 pagination 的结构）
  * @param msg 消息提示
  * @returns
  */
-const sendResult = <T = unknown>(data: T = null as T, msg: string = '成功'): ResBodyType<T> => {
+const sendResult = <T = unknown>(
+  data: ResBodyType<T>['data'] = null,
+  msg: string = '成功'
+): ResBodyType<T> => {
   return {
     code: 200,
     msg,
@@ -85,7 +85,7 @@ const asyncHandler = <R, T, E extends ReqType = 'get'>(handler: AsyncHandlerFunc
       }
       if (result) {
         // 检查是否为成功结果
-        res.send(sendResult(result.data, result.msg));
+        res.send(sendResult<T>(result.data, result.msg));
       }
     } catch (error) {
       // 捕获异常并传递给错误处理中间件

@@ -12,50 +12,48 @@ type CategoryListRequestType = {
     name?: string;
 }
 
-type CategoryListResponseType = {
-    data: Pick<CategoryAttributes, 'id' | 'name' | 'slug' | 'createdAt' | 'updatedAt'>[];
-    pagination: {
-        page: number;
-        size: number;
-        total: number;
-    }
-}
+type CategoryListResponseType = Pick<
+  CategoryAttributes,
+  'id' | 'name' | 'slug' | 'createdAt' | 'updatedAt'
+>;
 
 /**
  * 获取分类列表
  * @param param 请求参数
  * @returns 分类列表
  */
-const getCategoryList = async (param: ParameBodyType<CategoryListRequestType>): Promise<HandlerResult<CategoryListResponseType>> => {
-    const { page = 1, size = 10, name } = param;
-    const offset = (page - 1) * size;
-    const limit = size;
+const getCategoryList = async (
+  param: ParameBodyType<CategoryListRequestType>
+): Promise<HandlerResult<CategoryListResponseType>> => {
+  const { page = 1, size = 10, name } = param;
+  const offset = (page - 1) * size;
+  const limit = size;
 
-    const where: WhereOptions<CategoryAttributes> = {};
-    if (name) {
-        where.name = { [Op.like]: `%${name}%` };
-    }
+  const where: WhereOptions<CategoryAttributes> = {};
+  if (name) {
+    where.name = { [Op.like]: `%${name}%` };
+  }
 
-    const categories = await Category.findAndCountAll({
-        attributes: ['id', 'name', 'slug', 'createdAt', 'updatedAt'],
-        where,
-        limit,
-        offset,
-        order: [['id', 'ASC']],
-    });
+  const categories = await Category.findAndCountAll({
+    attributes: ['id', 'name', 'slug', 'createdAt', 'updatedAt'],
+    where,
+    limit,
+    offset,
+    order: [['id', 'ASC']],
+  });
 
-    return {
-        msg: '获取分类列表成功',
-        data: {
-            data: categories.rows,
-            pagination: {
-                page,
-                size,
-                total: categories.count,
-            }
-        }
-    };
-}
+  return {
+    msg: '获取分类列表成功',
+    data: {
+      data: categories.rows,
+      pagination: {
+        page,
+        size,
+        total: categories.count,
+      },
+    },
+  };
+};
 
 
 type AddCategoryRequestType = {

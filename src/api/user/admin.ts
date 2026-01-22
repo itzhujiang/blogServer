@@ -1,7 +1,11 @@
 import express from 'express';
 import { asyncHandler } from '../../utils/getSendResult';
-import { login } from '../../services/user/admin';
-import type { LoginRequsetType, LoginResponseType } from '../../services/user/admin';
+import { getUserInfo, login } from '../../services/user/admin';
+import type {
+  LoginRequsetType,
+  LoginResponseType,
+  UserInfoResponseType,
+} from '../../services/user/admin';
 import { loginValidation, handleValidationErrors } from '../../validators/index';
 
 const router = express.Router();
@@ -14,5 +18,12 @@ router.post(
     return await login(req.body);
   })
 );
+
+// 获取用户接口
+router.get('/getUesrInfo', asyncHandler<null, UserInfoResponseType>(async (req) => {
+  return await getUserInfo({
+    id: req.user?.id
+  })
+}))
 
 export default router;

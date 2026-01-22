@@ -2,17 +2,19 @@ import { HandlerResult } from '../../utils/getSendResult';
 import { ParameBodyType } from '../../utils/type';
 import { SiteSetting, SiteSettingAttributes } from '../../models/index';
 
-type SiteSettingResponseType = SiteSettingAttributes[];
+type SiteSettingResponseType = SiteSettingAttributes;
 
 /**
  * 获取站点设置
  */
 const getSiteSettings = async (): Promise<HandlerResult<SiteSettingResponseType>> => {
-    const settings = await SiteSetting.findAll();
-    return {
-        data: settings,
-    };
-}
+  const settings = await SiteSetting.findAll();
+  return {
+    data: {
+      data: settings,
+    },
+  };
+};
 
 type UpdateSiteSettingParamType = Pick<SiteSettingAttributes, 'id' | 'description' | 'settingKey' | 'settingType' | 'settingValue'>
 

@@ -1,6 +1,6 @@
 import md5 from 'md5';
 import type { HandlerResult } from '../../utils/getSendResult';
-import { AdminUser } from '../../models';
+import { AdminUser, AdminUserAttributes } from '../../models';
 import { issueJwt } from '../../utils/jwt';
 
 type LoginRequsetType = {
@@ -34,7 +34,9 @@ const login = async (adminObj: LoginRequsetType): Promise<HandlerResult<LoginRes
     });
     return {
       data: {
-        token,
+        data: {
+          token,
+        },
       },
     };
   }
@@ -45,4 +47,37 @@ const login = async (adminObj: LoginRequsetType): Promise<HandlerResult<LoginRes
   };
 };
 
-export { login, LoginRequsetType, LoginResponseType };
+type UserInfoResponseType = Pick<
+  AdminUserAttributes,
+  'id' | 'email' | 'avatarUrl' | 'displayName' | 'username'
+>;
+
+const getUserInfo = async (parma: {
+  id?: number;
+}): Promise<HandlerResult<UserInfoResponseType>> => {
+  if (!parma.id) {
+    return {
+      err: '当前用户不存在',
+    };
+  }
+  const user = await AdminUser.findByPk(parma.id);
+  if (!user) {
+    return {
+      err: '当前用户不存在',
+    };
+  }
+  return {
+    data: {
+      data: {
+        id: user.id,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        displayName: user.displayName,
+        username: user.username,
+      },
+    },
+    msg: '成功',
+  };
+};
+
+export { login, getUserInfo, LoginRequsetType, LoginResponseType, UserInfoResponseType };

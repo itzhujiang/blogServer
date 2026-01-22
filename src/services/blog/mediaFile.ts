@@ -188,10 +188,12 @@ const UploadFile = async (param: UploadRequsetType): Promise<HandlerResult<Uploa
 
   return {
     data: {
-      code,
-      size: file.size,
-      url: `/uploads/temp/${storedName}`,
-      fileName: file.originalname,
+      data: {
+        code,
+        size: file.size,
+        url: `/uploads/temp/${storedName}`,
+        fileName: file.originalname,
+      },
     },
   };
 };
@@ -207,7 +209,7 @@ const UploadFile = async (param: UploadRequsetType): Promise<HandlerResult<Uploa
 const confirmTempMedia = async (
   codes: string[],
   externalTransaction?: Transaction
-): Promise<HandlerResult<ConfirmResultType[]>> => {
+): Promise<HandlerResult<ConfirmResultType>> => {
   const transaction = externalTransaction || (await sequelize.transaction());
   const shouldAutoCommit = !externalTransaction;
 
@@ -361,7 +363,11 @@ const confirmTempMedia = async (
     await transaction.commit();
   }
 
-  return { data: results };
+  return {
+    data: {
+      data: results,
+    },
+  };
 };
 
 /**
@@ -416,12 +422,14 @@ const initBigFileUpload = async (
   if (existingFile) {
     return {
       data: {
-        identifier,
-        chunkSize: actualChunkSize,
-        totalChunks,
-        uploadedChunks: [], // 秒传时无需上传分片
-        isNew: false,
-        existingFileUrl: existingFile.fileUrl,
+        data: {
+          identifier,
+          chunkSize: actualChunkSize,
+          totalChunks,
+          uploadedChunks: [], // 秒传时无需上传分片
+          isNew: false,
+          existingFileUrl: existingFile.fileUrl,
+        },
       },
     };
   }
@@ -438,12 +446,14 @@ const initBigFileUpload = async (
 
     return {
       data: {
-        identifier: existingRecord.identifier,
-        chunkSize: existingRecord.chunkSize,
-        totalChunks: existingRecord.totalChunks,
-        uploadedChunks: uploadedChunks.map(c => c.chunkNumber),
-        isNew: true,
-        existingFileUrl: null,
+        data: {
+          identifier: existingRecord.identifier,
+          chunkSize: existingRecord.chunkSize,
+          totalChunks: existingRecord.totalChunks,
+          uploadedChunks: uploadedChunks.map(c => c.chunkNumber),
+          isNew: true,
+          existingFileUrl: null,
+        },
       },
     };
   }
@@ -463,12 +473,14 @@ const initBigFileUpload = async (
 
   return {
     data: {
-      identifier,
-      chunkSize: actualChunkSize,
-      totalChunks,
-      uploadedChunks: [],
-      isNew: true,
-      existingFileUrl: null,
+      data: {
+        identifier,
+        chunkSize: actualChunkSize,
+        totalChunks,
+        uploadedChunks: [],
+        isNew: true,
+        existingFileUrl: null,
+      },
     },
   };
 };
@@ -514,9 +526,11 @@ const uploadBigFileChunk = async (
 
     return {
       data: {
-        chunkNumber,
-        uploadedChunks: uploadedChunks.map(c => c.chunkNumber),
-        progress,
+        data: {
+          chunkNumber,
+          uploadedChunks: uploadedChunks.map(c => c.chunkNumber),
+          progress,
+        },
       },
     };
   }
@@ -534,7 +548,13 @@ const uploadBigFileChunk = async (
   if (existingChunk) {
     // 更新已有记录（状态为 pending）
     existingChunk.status = 'uploaded';
-    existingChunk.chunkPath = path.join('uploads', 'temp', 'chunks', identifier, `${chunkNumber}.part`);
+    existingChunk.chunkPath = path.join(
+      'uploads',
+      'temp',
+      'chunks',
+      identifier,
+      `${chunkNumber}.part`
+    );
     existingChunk.chunkHash = chunkHash || null;
     existingChunk.uploadedAt = Date.now();
     await existingChunk.save();
@@ -561,9 +581,11 @@ const uploadBigFileChunk = async (
 
   return {
     data: {
-      chunkNumber,
-      uploadedChunks: uploadedChunks.map(c => c.chunkNumber),
-      progress,
+      data: {
+        chunkNumber,
+        uploadedChunks: uploadedChunks.map(c => c.chunkNumber),
+        progress,
+      },
     },
   };
 };
@@ -653,10 +675,12 @@ const mergeBigFileChunks = async (
 
   return {
     data: {
-      code: identifier,
-      size: Number(fileRecord.totalSize),
-      url: `/uploads/temp/${storedName}`,
-      fileName: fileRecord.originalName,
+      data: {
+        code: identifier,
+        size: Number(fileRecord.totalSize),
+        url: `/uploads/temp/${storedName}`,
+        fileName: fileRecord.originalName,
+      },
     },
   };
 };
@@ -682,10 +706,12 @@ const getBigFileStatus = async (
 
   return {
     data: {
-      identifier: fileRecord.identifier,
-      status: fileRecord.status,
-      uploadedChunks: uploadedChunks.map(c => c.chunkNumber),
-      progress,
+      data: {
+        identifier: fileRecord.identifier,
+        status: fileRecord.status,
+        uploadedChunks: uploadedChunks.map(c => c.chunkNumber),
+        progress,
+      },
     },
   };
 };

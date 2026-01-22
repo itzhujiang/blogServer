@@ -7,12 +7,14 @@ export interface UserPayload {
   username: string;
   name: string;
 }
+ 
+export type ResType = 'obj' | 'arr';
 
 export type ResBodyType<T = never> = {
   code: 200 | 401 | 500;
   data: {
     data: Array<T> | T;
-    pagination: {
+    pagination?: {
       page: number;
       size: number;
       total: number;
