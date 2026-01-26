@@ -94,7 +94,6 @@ export enum SettingType {
 // 字符串字面量类型映射
 export type ArticleStatusLiteral = 'draft' | 'published' | 'archived';
 export type CommentStatusLiteral = 'pending' | 'approved' | 'spam' | 'trash';
-export type MediaUsageTypeLiteral = 'article' | 'avatar' | 'artwork' | 'general';
 export type ArticleMediaUsageLiteral = 'thumbnail' | 'attachment' | 'content';
 export type ArtworkMediaUsageLiteral = 'main' | 'thumbnail' | 'process' | 'variant';
 export type ArtworkStatusLiteral = 'draft' | 'published';

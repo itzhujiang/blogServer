@@ -9,6 +9,7 @@ import {
   ArticleStatusLiteral,
   ArticleMedia,
   ArticleCategory,
+  MediaFile,
   sequelize,
 } from '../../models/index';
 import { ConfirmResultType, confirmTempMedia } from './mediaFile';
@@ -50,6 +51,8 @@ type ArticleItemType = Pick<
   | 'status'
   | 'publishedAt'
 > & {
+  fileUrl: string; // 文章内容文件URL
+  attachmentUrlArr: string[]; // 附件url数组
   categories: Pick<CategoryAttributes, 'id' | 'name' | 'slug'>[];
 };
 
@@ -109,7 +112,7 @@ const getArticleList = async (
   }
   orderRules.push(['publishedAt', 'DESC']); // 默认按发布时间倒序
 
-  // 3. 构建 include 关联查询（用于分类过滤）
+  // 3. 构建 include 关联查询（用于分类过滤和媒体文件）
   const includeOptions: Includeable[] = [
     {
       model: Category,
@@ -120,6 +123,20 @@ const getArticleList = async (
         where: { id: categoryId },
         required: true, // INNER JOIN（必须有该分类）
       }),
+    },
+    {
+      model: ArticleMedia,
+      as: 'articleMedias',
+      required: false, // LEFT JOIN（允许文章没有媒体文件）
+      attributes: ['mediaId', 'usageType'], // 需要 usageType 来区分不同类型的媒体
+      include: [
+        {
+          model: MediaFile,
+          as: 'media',
+          required: false,
+          attributes: ['fileUrl'],
+        },
+      ],
     },
   ];
 
@@ -150,12 +167,31 @@ const getArticleList = async (
     // 获取关联的分类数据（Sequelize 返回的关联数据）
     const categoriesData = article.get('categories') as Category[] | undefined;
 
+    // 获取关联的媒体文件数据
+    const articleMedias = article.get('articleMedias') as ArticleMedia[] | undefined;
+
+    // 提取文章内容文件 URL（usageType = 'content'）
+    const contentMedia = articleMedias?.find(media => media.usageType === 'content');
+    const contentMediaFile = contentMedia?.get('media') as MediaFile | undefined;
+    const fileUrl = contentMediaFile?.fileUrl || ''; // 如果没有关联媒体文件，返回空字符串
+
+    // 提取附件文件 URL 数组（usageType = 'attachment'）
+    const attachmentMedias = articleMedias?.filter(media => media.usageType === 'attachment') || [];
+    const attachmentUrlArr = attachmentMedias
+      .map(media => {
+        const mediaFile = media.get('media') as MediaFile | undefined;
+        return mediaFile?.fileUrl;
+      })
+      .filter((url): url is string => !!url); // 过滤掉 undefined 值
+
     return {
       id: article.id,
       title: article.title,
       slug: article.slug,
       excerpt: article.excerpt,
       thumbnailUrl: article.thumbnailUrl,
+      fileUrl: fileUrl,
+      attachmentUrlArr: attachmentUrlArr,
       authorName: article.authorName,
       readingTime: article.readingTime,
       viewCount: article.viewCount,

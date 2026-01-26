@@ -78,7 +78,7 @@ export function initCategoryModel(sequelize: Sequelize): typeof Category {
       sequelize,
       tableName: 'categories',
       underscored: true,
-      timestamps: true,
+      timestamps: false,
       paranoid: true, // 启用软删除
       deletedAt: 'deleted_at', // 软删除字段名
       hooks: {

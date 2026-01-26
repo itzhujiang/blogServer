@@ -152,7 +152,7 @@ export function initArticleModel(sequelize: Sequelize): typeof Article {
       sequelize,
       tableName: 'articles',
       underscored: true,
-      timestamps: true,
+      timestamps: false,
       paranoid: true, // 启用软删除
       deletedAt: 'deleted_at', // 软删除字段名
       hooks: {

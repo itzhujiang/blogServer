@@ -42,7 +42,8 @@
 ```json
 {
   "code": 500,
-  "err": "错误信息"
+  "msg": "错误信息",
+  "data": null
 }
 ```
 
@@ -88,7 +89,8 @@
 ```json
 {
   "code": 401,
-  "err": "用户名或密码错误"
+  "msg": "用户名或密码错误",
+  "data": null
 }
 ```
 
@@ -131,7 +133,8 @@
 ```json
 {
   "code": 500,
-  "err": "当前用户不存在"
+  "msg": "当前用户不存在",
+  "data": null
 }
 ```
 
@@ -172,6 +175,11 @@
         "slug": "article-slug",
         "excerpt": "文章摘要",
         "thumbnailUrl": "/uploads/file/2024/01/xxx.jpg",
+        "fileUrl": "/uploads/file/2024/01/article-content.md",
+        "attachmentUrlArr": [
+          "/uploads/file/2024/01/attachment1.pdf",
+          "/uploads/file/2024/01/attachment2.zip"
+        ],
         "authorName": "翎羽",
         "readingTime": 10,
         "viewCount": 100,
@@ -247,6 +255,15 @@
 | isUpdateArticle | boolean | 否 | 是否更新文章内容 |
 | isUpdateThumbnail | boolean | 否 | 是否更新缩略图 |
 
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "修改文章成功",
+  "data": null
+}
+```
+
 ---
 
 ### 2.4 删除文章
@@ -261,6 +278,15 @@
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|:----:|------|
 | id | number | 是 | 文章ID |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "删除文章成功",
+  "data": null
+}
+```
 
 ---
 
@@ -281,6 +307,30 @@
 | size | number | 否 | 每页数量，默认 10 |
 | name | string | 否 | 分类名称（模糊查询） |
 
+**响应示例：**
+```json
+{
+  "code": 200,
+  "msg": "获取分类列表成功",
+  "data": {
+    "data": [
+      {
+        "id": 1,
+        "name": "技术",
+        "slug": "tech",
+        "createdAt": 1704067200000,
+        "updatedAt": 1704067200000
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "size": 10,
+      "total": 20
+    }
+  }
+}
+```
+
 ---
 
 ### 3.2 添加分类
@@ -297,6 +347,23 @@
 |--------|------|:----:|------|
 | name | string | 是 | 分类名称 |
 | slug | string | 是 | URL标识（唯一） |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "添加分类成功",
+  "data": null
+}
+```
+
+**错误响应：**
+```json
+{
+  "code": 500,
+  "err": "分类URL标识已存在"
+}
+```
 
 ---
 
@@ -316,6 +383,23 @@
 | name | string | 是 | 分类名称 |
 | slug | string | 是 | URL标识 |
 
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "修改分类成功",
+  "data": null
+}
+```
+
+**错误响应：**
+```json
+{
+  "code": 500,
+  "err": "分类ID不存在"
+}
+```
+
 ---
 
 ### 3.4 删除分类
@@ -330,6 +414,24 @@
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|:----:|------|
 | id | number | 是 | 分类ID |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "删除分类成功",
+  "data": null
+}
+```
+
+**错误响应：**
+```json
+{
+  "code": 500,
+  "msg": "分类不存在，无法删除",
+  "data": null
+}
+```
 
 ---
 
@@ -357,6 +459,35 @@
 | createDateTimeStart | number | 否 | 创建时间开始（毫秒时间戳） |
 | createDateTimeEnd | number | 否 | 创建时间结束（毫秒时间戳） |
 
+**响应示例：**
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "data": [
+      {
+        "id": 1,
+        "articleId": 1,
+        "parentId": null,
+        "authorName": "张三",
+        "authorEmail": "zhangsan@example.com",
+        "authorUrl": "https://example.com",
+        "content": "这是一条评论",
+        "status": "approved",
+        "likeCount": 10,
+        "createdAt": 1704067200000
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "size": 10,
+      "total": 50
+    }
+  }
+}
+```
+
 ---
 
 ### 4.2 审核评论
@@ -373,6 +504,24 @@
 |--------|------|:----:|------|
 | id | number | 是 | 评论ID |
 | status | string | 是 | 状态：pending/approved/spam/trash |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "评论审核状态更新成功",
+  "data": null
+}
+```
+
+**错误响应：**
+```json
+{
+  "code": 500,
+  "msg": "评论不存在",
+  "data": null
+}
+```
 
 ---
 
@@ -422,9 +571,40 @@
 |--------|------|:----:|------|
 | fileName | string | 是 | 文件名 |
 | fileSize | number | 是 | 文件大小（字节） |
-| mimeType | string | 是 | MIME 类型 |
 | fileHash | string | 是 | 文件 MD5（用于秒传） |
 | chunkSize | number | 否 | 分片大小，默认 2MB |
+
+**响应示例：**
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "identifier": "uuid-string",
+    "chunkSize": 2097152,
+    "totalChunks": 10,
+    "uploadedChunks": [1, 2, 3],
+    "isNew": true,
+    "existingFileUrl": null
+  }
+}
+```
+
+**秒传响应示例：**
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "identifier": "uuid-string",
+    "chunkSize": 2097152,
+    "totalChunks": 10,
+    "uploadedChunks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "isNew": false,
+    "existingFileUrl": "/uploads/temp/existing-file.mp4"
+  }
+}
+```
 
 ---
 
@@ -445,6 +625,19 @@
 | chunkNumber | number | 是 | 分片序号（从1开始） |
 | chunkHash | string | 否 | 分片 MD5 |
 
+**响应示例：**
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "chunkNumber": 3,
+    "uploadedChunks": [1, 2, 3],
+    "progress": 30
+  }
+}
+```
+
 ---
 
 ### 5.4 大文件合并
@@ -461,6 +654,20 @@
 |--------|------|:----:|------|
 | identifier | string | 是 | 文件标识 |
 
+**响应示例：**
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "code": "uuid-code-string",
+    "size": 20480000,
+    "url": "/uploads/temp/merged-file.mp4",
+    "fileName": "original-name.mp4"
+  }
+}
+```
+
 ---
 
 ### 5.5 大文件上传状态查询
@@ -475,6 +682,25 @@
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|:----:|------|
 | identifier | string | 是 | 文件标识 |
+
+**响应示例：**
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "identifier": "uuid-string",
+    "status": "uploading",
+    "uploadedChunks": [1, 2, 3, 4, 5],
+    "progress": 50
+  }
+}
+```
+
+**状态说明：**
+- `uploading`: 上传中
+- `completed`: 已完成
+- `failed`: 上传失败
 
 ---
 
@@ -537,6 +763,15 @@
 | timeline | array | 是 | 成长足迹数组 |
 | isUpdateAvatar | boolean | 是 | 是否更新头像 |
 
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "更新关于我信息成功",
+  "data": null
+}
+```
+
 ---
 
 ## 七、站点设置
@@ -547,6 +782,34 @@
 |------|-----|
 | **URL** | `/api/blog/site-setting/getSettings` |
 | **Method** | `GET` |
+
+**响应示例：**
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "data": [
+      {
+        "id": 1,
+        "settingKey": "site_title",
+        "settingValue": "我的博客",
+        "settingType": "string",
+        "description": "网站标题",
+        "updatedAt": 1704067200000
+      },
+      {
+        "id": 2,
+        "settingKey": "posts_per_page",
+        "settingValue": "10",
+        "settingType": "number",
+        "description": "每页文章数",
+        "updatedAt": 1704067200000
+      }
+    ]
+  }
+}
+```
 
 ---
 
@@ -567,6 +830,24 @@
 | settingType | string | 是 | 类型：string/number/boolean/json |
 | settingValue | any | 是 | 设置值 |
 | description | string | 是 | 设置描述 |
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "站点设置更新成功",
+  "data": null
+}
+```
+
+**错误响应：**
+```json
+{
+  "code": 500,
+  "msg": "不存在该站点设置",
+  "data": null
+}
+```
 
 ---
 

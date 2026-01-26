@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { HandlerResult } from '../../utils/getSendResult';
 import { TempMedia, TEMP_FILE_EXPIRY } from '../../models/temp-media';
 import { MediaFile } from '../../models/media-file';
-import { BigFileRecord, BigFileChunk, MediaUsageTypeLiteral } from '../../models';
+import { BigFileRecord, BigFileChunk } from '../../models';
 import { sequelize } from '../../models/db';
 import { Transaction } from 'sequelize';
 
@@ -59,7 +59,7 @@ type BigFileInitRequestType = {
   /** 文件大小（字节） */
   fileSize: number;
   /** MIME 类型 */
-  mimeType: MediaUsageTypeLiteral;
+  mimeType: string;
   /** 文件 MD5（用于秒传和文件标识） */
   fileHash: string;
   /** 分片大小（可选，默认 2MB） */
@@ -301,7 +301,6 @@ const confirmTempMedia = async (
           fileUrl: `/uploads/temp/${tempMedia.storedName}`, // 临时URL
           fileSize: Number(tempMedia.fileSize),
           mimeType: tempMedia.mimeType,
-          usageType: 'general',
           fileHash,
           createdAt: now,
         },

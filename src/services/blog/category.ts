@@ -66,66 +66,66 @@ type AddCategoryRequestType = {
 /**
  * 添加分类
  */
-const addCategory = async (param: ParameBodyType<AddCategoryRequestType>): Promise<HandlerResult<null>> => {
-    const { name, slug } = param;
-    const existingCategory = await Category.findOne({ where: { slug } });
-    if (existingCategory) {
-        return {
-            err: '分类URL标识已存在',
-        }
-    }
-    await Category.create({
-        name,
-        slug,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-    });
+const addCategory = async (
+  param: ParameBodyType<AddCategoryRequestType>
+): Promise<HandlerResult<null>> => {
+  const { name, slug } = param;
+  const existingCategory = await Category.findOne({ where: { slug } });
+  if (existingCategory) {
     return {
-        msg: '添加分类成功',
-        data: null,
-    }
+      err: '分类URL标识已存在',
+    };
+  }
+  await Category.create({
+    name,
+    slug,
+  });
+  return {
+    msg: '添加分类成功',
+    data: null,
+  };
+};
 
-}
- 
 type UpdateCategoryRequestType = {
-    /** 分类ID */
-    id: number;
+  /** 分类ID */
+  id: number;
 } & AddCategoryRequestType;
 
 /**
  * 修改分类
- * @param param 
- * @returns 
+ * @param param
+ * @returns
  */
-const updateCategory = async (param: ParameBodyType<UpdateCategoryRequestType>): Promise<HandlerResult<null>> => {
-   try {
-     const { id, name, slug } = param;
-    const isIdExist = await Category.findByPk(id);
-    if (!isIdExist) {
-        return {
-            err: '分类ID不存在',
-        }
+const updateCategory = async (
+  param: ParameBodyType<UpdateCategoryRequestType>
+): Promise<HandlerResult<null>> => {
+  try {
+    const { id, name, slug } = param;
+    const category = await Category.findByPk(id);
+    if (!category) {
+      return {
+        err: '分类ID不存在',
+      };
     }
     const existingCategory = await Category.findOne({ where: { slug } });
     if (existingCategory && existingCategory.id !== id) {
-        return {
-            err: '分类URL标识已存在',
-        }
+      return {
+        err: '分类URL标识已存在',
+      };
     }
 
-    await Category.update({
-        name,
-        slug,
-        updatedAt: Date.now(),
-    }, { where: { id } });
+    await category.update({
+      name,
+      slug,
+    });
     return {
-        msg: '修改分类成功',
-        data: null,
-    }
-   } catch (error) {
-     throw error;
-   }
-}
+      msg: '修改分类成功',
+      data: null,
+    };
+  } catch (error) {
+    throw error;
+  }
+};
 
 type DelCategoryRequestType = {
     /** 分类ID */
