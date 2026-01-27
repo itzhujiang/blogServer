@@ -135,11 +135,13 @@ export function initArticleModel(sequelize: Sequelize): typeof Article {
       createdAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '创建时间（毫秒级Unix时间戳）',
       },
       updatedAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '更新时间（毫秒级Unix时间戳）',
       },
       deletedAt: {

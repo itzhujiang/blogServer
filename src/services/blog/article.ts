@@ -24,13 +24,13 @@ type ArticleListRequsetType = {
   /** 文章标题（模糊查询） */
   title?: string;
   /** 文章状态 */
-  status?: ArticleStatusLiteral;
+  status?: ArticleStatusLiteral | string;
   /** 发布时间-开始（毫秒时间戳） */
-  publishedAtStart?: number;
+  publishedAtStart?: number | string;
   /** 发布时间-结束（毫秒时间戳） */
-  publishedAtEnd?: number;
+  publishedAtEnd?: number | string;
   /** 分类ID */
-  categoryId?: number;
+  categoryId?: number | string;
   /** 浏览量排序 */
   viewCountSort?: 'desc' | 'asc';
 };
@@ -62,6 +62,13 @@ type ArticleItemType = Pick<
 type ArticleListResponseType = ArticleItemType;
 
 /**
+ * 检查参数是否为有效值（非空字符串、非 undefined、非 null）
+ */
+const isValidParam = (value: any): boolean => {
+  return value !== undefined && value !== null && value !== '';
+};
+
+/**
  * 获取文章列表
  * @param param 查询参数
  * @returns 文章列表
@@ -84,23 +91,23 @@ const getArticleList = async (
   const whereConditions: WhereOptions<ArticleAttributes> = {};
 
   // 标题模糊查询
-  if (title) {
+  if (isValidParam(title)) {
     whereConditions.title = { [Op.like]: `%${title}%` };
   }
 
   // 状态精确匹配
-  if (status) {
-    whereConditions.status = status;
+  if (isValidParam(status)) {
+    whereConditions.status = status as ArticleStatusLiteral;
   }
 
   // 发布时间范围查询
-  if (publishedAtStart || publishedAtEnd) {
+  if (isValidParam(publishedAtStart) || isValidParam(publishedAtEnd)) {
     const publishedAtCondition: { [Op.gte]?: number; [Op.lte]?: number } = {};
-    if (publishedAtStart) {
-      publishedAtCondition[Op.gte] = publishedAtStart;
+    if (isValidParam(publishedAtStart)) {
+      publishedAtCondition[Op.gte] = Number(publishedAtStart);
     }
-    if (publishedAtEnd) {
-      publishedAtCondition[Op.lte] = publishedAtEnd;
+    if (isValidParam(publishedAtEnd)) {
+      publishedAtCondition[Op.lte] = Number(publishedAtEnd);
     }
     whereConditions.publishedAt = publishedAtCondition;
   }
@@ -119,8 +126,8 @@ const getArticleList = async (
       as: 'categories',
       through: { attributes: [] }, // 不返回中间表数据
       attributes: ['id', 'name', 'slug'], // 只返回需要的字段
-      ...(categoryId && {
-        where: { id: categoryId },
+      ...(isValidParam(categoryId) && {
+        where: { id: Number(categoryId) },
         required: true, // INNER JOIN（必须有该分类）
       }),
     },

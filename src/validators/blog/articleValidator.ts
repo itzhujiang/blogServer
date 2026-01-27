@@ -17,31 +17,42 @@ export const getArticleListValidation = [
     .toInt(),
 
   // 标题（模糊查询）
-  query('title').optional().isString().withMessage('标题必须是字符串').trim(),
+  query('title')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('标题必须是字符串')
+    .trim(),
 
-  // 状态
+  // 状态 - 使用 isIn() 限制为指定值
   query('status')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['draft', 'published', 'archived'])
     .withMessage('状态必须是 draft/published/archived'),
 
   // 发布时间范围
   query('publishedAtStart')
-    .optional()
+    .optional({ values: 'falsy' })
     .isInt({ min: 0 })
     .withMessage('开始时间必须是有效的时间戳')
     .toInt(),
   query('publishedAtEnd')
-    .optional()
+    .optional({ values: 'falsy' })
     .isInt({ min: 0 })
     .withMessage('结束时间必须是有效的时间戳')
     .toInt(),
 
   // 分类ID
-  query('categoryId').optional().isInt({ min: 1 }).withMessage('分类ID必须是正整数').toInt(),
+  query('categoryId')
+    .optional({ values: 'falsy' })
+    .isInt({ min: 1 })
+    .withMessage('分类ID必须是正整数')
+    .toInt(),
 
-  // 浏览量排序
-  query('viewCountSort').optional().isIn(['asc', 'desc']).withMessage('排序方式必须是 asc 或 desc'),
+  // 浏览量排序 - 使用 isIn() 限制为指定值
+  query('viewCountSort')
+    .optional({ values: 'falsy' })
+    .isIn(['asc', 'desc'])
+    .withMessage('排序方式必须是 asc 或 desc'),
 ];
 
 /**

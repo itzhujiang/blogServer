@@ -25,7 +25,7 @@ export const handleValidationErrors = (req: Request, res: Response, next: NextFu
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const firstError = errors.array()[0];
-    res.status(500).send(sendErr(firstError.msg, 500));
+    res.status(200).send(sendErr(firstError.msg, 500));
     return;
   }
   next();

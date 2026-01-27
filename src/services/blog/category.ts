@@ -30,7 +30,7 @@ const getCategoryList = async (
   const limit = size;
 
   const where: WhereOptions<CategoryAttributes> = {};
-  if (name) {
+  if (name && name !== '') {
     where.name = { [Op.like]: `%${name}%` };
   }
 

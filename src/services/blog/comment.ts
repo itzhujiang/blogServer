@@ -6,13 +6,23 @@ import { Op, WhereOptions, Order } from 'sequelize';
 /**
  * 评论列表请求类型
  */
-type CommentsRequestType = Pick<CommentAttributes, 'id' | 'parentId' | 'status' | 'authorName' | 'articleId'> & {
+type CommentsRequestType = {
+  /** 评论ID */
+  id?: number | string;
+  /** 父评论ID */
+  parentId?: number | string | null;
+  /** 审核状态 */
+  status?: CommentAttributes['status'] | string;
+  /** 作者名 */
+  authorName?: string;
+  /** 文章ID */
+  articleId?: number | string;
   /** 点赞数排序 */
   likeCountSort?: 'asc' | 'desc';
   /** 创建时间-开始（毫秒时间戳） */
-  createDateTimeStart?: number;
+  createDateTimeStart?: number | string;
   /** 创建时间-结束（毫秒时间戳） */
-  createDateTimeEnd?: number;
+  createDateTimeEnd?: number | string;
 };
 
 /**
@@ -36,6 +46,13 @@ type CommentItemType = Pick<
  * 评论列表响应类型
  */
 type CommentsListResponseType = CommentItemType;
+
+/**
+ * 检查参数是否为有效值（非空字符串、非 undefined、非 null）
+ */
+const isValidParam = (value: any): boolean => {
+  return value !== undefined && value !== null && value !== '';
+};
 
 /**
  * 获取评论列表
@@ -62,39 +79,40 @@ const getCommentsList = async (
     // 1. 构建查询条件
     const whereConditions: WhereOptions<CommentAttributes> = {};
 
-    // ID 精确匹配
-    if (id) {
-      whereConditions.id = id;
+    // ID 精确匹配（过滤空字符串）
+    if (isValidParam(id)) {
+      whereConditions.id = Number(id);
     }
 
     // 父评论ID（用于查询顶级评论或回复）
-    if (parentId !== undefined) {
-      whereConditions.parentId = parentId;
+    // 注意：parentId 可以是 null，所以需要特殊处理
+    if (isValidParam(parentId)) {
+      whereConditions.parentId = Number(parentId);
     }
 
     // 状态精确匹配
-    if (status) {
-      whereConditions.status = status;
+    if (isValidParam(status)) {
+      whereConditions.status = status as CommentAttributes['status'];
     }
 
     // 作者名模糊查询
-    if (authorName) {
+    if (isValidParam(authorName)) {
       whereConditions.authorName = { [Op.like]: `%${authorName}%` };
     }
 
-    // 文章ID精确匹配
-    if (articleId) {
-      whereConditions.articleId = articleId;
+    // 文章ID精确匹配（过滤空字符串）
+    if (isValidParam(articleId)) {
+      whereConditions.articleId = Number(articleId);
     }
 
-    // 创建时间范围查询
-    if (createDateTimeStart || createDateTimeEnd) {
+    // 创建时间范围查询（过滤空字符串）
+    if (isValidParam(createDateTimeStart) || isValidParam(createDateTimeEnd)) {
       const createdAtCondition: { [Op.gte]?: number; [Op.lte]?: number } = {};
-      if (createDateTimeStart) {
-        createdAtCondition[Op.gte] = createDateTimeStart;
+      if (isValidParam(createDateTimeStart)) {
+        createdAtCondition[Op.gte] = Number(createDateTimeStart);
       }
-      if (createDateTimeEnd) {
-        createdAtCondition[Op.lte] = createDateTimeEnd;
+      if (isValidParam(createDateTimeEnd)) {
+        createdAtCondition[Op.lte] = Number(createDateTimeEnd);
       }
       whereConditions.createdAt = createdAtCondition;
     }

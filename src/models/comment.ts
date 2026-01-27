@@ -120,11 +120,13 @@ export function initCommentModel(sequelize: Sequelize): typeof Comment {
       createdAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '创建时间（毫秒级Unix时间戳）',
       },
       updatedAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '更新时间（毫秒级Unix时间戳）',
       },
     },

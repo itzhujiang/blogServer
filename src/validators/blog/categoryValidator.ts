@@ -15,8 +15,12 @@ export const getCategorieListValidation = [
     .isInt({ min: 1, max: 100 })
     .withMessage('每页数量必须在1-100之间')
     .toInt(),
-  // 标题（模糊查询）
-  query('name').optional().isString().withMessage('标题必须是字符串').trim(),
+  // 分类名称（模糊查询）
+  query('name')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('分类名称必须是字符串')
+    .trim(),
 ];
 
 /**
