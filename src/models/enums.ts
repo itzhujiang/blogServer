@@ -68,6 +68,18 @@ export enum ArtworkMediaUsage {
 }
 
 /**
+ * 关于我页面媒体使用类型枚举
+ * - avatar: 头像
+ * - content: 内容文件（Markdown格式）
+ */
+export enum AboutPageMediaUsage {
+  AVATAR = 'avatar',
+  CONTENT = 'content',
+}
+
+export type AboutPageMediaUsageLiteral = 'avatar' | 'content';
+
+/**
  * AI作品状态枚举
  * - draft: 草稿（草稿状态，不公开展示）
  * - published: 已发布（公开展示）

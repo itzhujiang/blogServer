@@ -34,7 +34,6 @@ export interface AboutPageAttributes {
   title: string; // 页面标题
   nickname?: string | null; // 博主昵称（如：木心）
   jobTitle?: string | null; // 职业标签（如：前端开发者 & UI设计师）
-  content: string; // 页面内容（个人简介）
   personalTags?: string[] | null; // 个人标签数组（如：["热爱学习的技术人", "AI创作探索者"]）
   contactInfo?: Record<string, unknown> | null; // 联系方式，JSON格式（如：{email, github, wechat}）
   socialLinks?: Record<string, unknown> | null; // 社交媒体链接，JSON格式（如：{twitter, dribbble, instagram}）
@@ -66,7 +65,6 @@ export class AboutPage
   declare title: string;
   declare nickname: string | null;
   declare jobTitle: string | null;
-  declare content: string;
   declare personalTags: string[] | null;
   declare contactInfo: Record<string, unknown> | null;
   declare socialLinks: Record<string, unknown> | null;
@@ -105,11 +103,6 @@ export function initAboutPageModel(sequelize: Sequelize): typeof AboutPage {
         type: DataTypes.STRING(100),
         allowNull: true,
         comment: '职业标签',
-      },
-      content: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        comment: '页面内容（个人简介）',
       },
       personalTags: {
         type: DataTypes.JSONB,

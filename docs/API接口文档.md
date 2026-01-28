@@ -752,24 +752,50 @@
   "code": 200,
   "msg": "成功",
   "data": {
-    "id": 1,
-    "nickname": "翎羽",
-    "jobTitle": "全栈开发工程师",
-    "content": "个人简介内容",
-    "avatarUrl": "/uploads/file/2024/01/avatar.jpg",
-    "personalTags": ["技术", "设计"],
-    "contactInfo": {
-      "email": "example@email.com",
-      "phone": "13800000000"
-    },
-    "socialLinks": {
-      "github": "https://github.com/xxx"
-    },
-    "skills": [{ "name": "JavaScript", "level": 90 }],
-    "timeline": [{ "year": "2020", "title": "开始写代码", "description": "..." }]
+    "data": [{
+      "id": 1,
+      "nickname": "翎羽",
+      "jobTitle": "全栈开发工程师",
+      "avatarUrl": "/uploads/file/2024/01/avatar.jpg",
+      "contentUrl": "/uploads/file/2024/01/about-content.md",
+      "personalTags": ["技术", "设计"],
+      "contactInfo": {
+        "email": "example@email.com",
+        "phone": "13800000000"
+      },
+      "socialLinks": {
+        "github": "https://github.com/xxx"
+      },
+      "skills": [
+        {
+          "category": "前端开发",
+          "items": [
+            { "name": "React & Next.js", "level": 90 },
+            { "name": "Vue & Nuxt.js", "level": 85 }
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "timestamp": 1704067200000,
+          "title": "开启博客之旅",
+          "description": "创建个人博客，记录技术与生活。"
+        }
+      ]
+    }],
+    "pagination": {
+      "page": 1,
+      "size": 1,
+      "total": 1
+    }
   }
 }
 ```
+
+**字段说明：**
+- `avatarUrl`: 头像图片 URL
+- `contentUrl`: 个人简介内容文件 URL（Markdown 格式）
+- 前端需要通过 `contentUrl` 获取 Markdown 文件内容并渲染
 
 ---
 
@@ -787,23 +813,66 @@
 |--------|------|:----:|------|
 | id | number | 是 | 关于我ID |
 | jobTitle | string | 是 | 职业标签 |
-| content | string | 是 | 个人简介内容 |
-| avatarCode | string | 是 | 头像文件Code |
+| avatarCode | string | 否 | 头像文件Code |
+| contentCode | string | 否 | 内容文件Code（Markdown格式） |
 | personalTags | array | 是 | 个人标签数组 |
 | contactInfo | object | 是 | 联系方式 |
 | socialLinks | object | 是 | 社交媒体链接 |
 | skills | array | 是 | 技能专长数组 |
 | timeline | array | 是 | 成长足迹数组 |
 | isUpdateAvatar | boolean | 是 | 是否更新头像 |
+| isUpdateContent | boolean | 是 | 是否更新内容文件 |
+
+**请求示例：**
+```json
+{
+  "id": 1,
+  "jobTitle": "全栈开发工程师",
+  "avatarCode": "uuid-avatar-code",
+  "contentCode": "uuid-content-code",
+  "personalTags": ["技术", "设计"],
+  "contactInfo": {
+    "email": "example@email.com",
+    "phone": "13800000000"
+  },
+  "socialLinks": {
+    "github": "https://github.com/xxx"
+  },
+  "skills": [
+    {
+      "category": "前端开发",
+      "items": [
+        { "name": "React", "level": 90 }
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "timestamp": 1704067200000,
+      "title": "开启博客之旅",
+      "description": "创建个人博客"
+    }
+  ],
+  "isUpdateAvatar": true,
+  "isUpdateContent": true
+}
+```
 
 **成功响应：**
 ```json
 {
   "code": 200,
-  "msg": "更新关于我信息成功",
+  "msg": "关于我信息更新成功",
   "data": null
 }
 ```
+
+**字段说明：**
+- `avatarCode`: 通过媒体上传接口获取的头像文件 Code
+- `contentCode`: 通过媒体上传接口获取的内容文件 Code（需上传 Markdown 文件）
+- `isUpdateAvatar`: 设置为 `true` 时才会更新头像
+- `isUpdateContent`: 设置为 `true` 时才会更新内容文件
+- 可以同时更新头像和内容，也可以只更新其中一个
 
 ---
 

@@ -136,7 +136,8 @@ async function seedInitialData() {
         title: '关于我',
         nickname: '木心',
         jobTitle: '前端开发者 & UI设计师',
-        content: '# 欢迎来到我的空间\n\n一个探索科技、设计、生活及AI创作潜能的个人博客。',
+        // 注意：content 字段已移除，现在通过 AboutPageMedia 关联 Markdown 文件
+        // 需要通过 API 上传 content 文件来设置内容
         personalTags: ['热爱学习的技术人', 'AI创作探索者'],
         contactInfo: {
           email: 'hello@mouxin.blog',

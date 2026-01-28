@@ -55,7 +55,6 @@ export function initCategoryModel(sequelize: Sequelize): typeof Category {
       slug: {
         type: DataTypes.STRING(100),
         allowNull: false,
-        unique: true,
         comment: 'URL标识',
       },
       createdAt: {

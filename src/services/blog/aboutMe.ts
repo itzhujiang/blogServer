@@ -5,9 +5,12 @@ import { ConfirmResultType, confirmTempMedia } from './mediaFile';
 
 
 /**
- * 扩展的关于我信息类型，包含头像URL
+ * 扩展的关于我信息类型，包含头像URL和内容URL
  */
-type AboutMeInfoResponseType = AboutPageAttributes & { avatarUrl?: string | null };
+type AboutMeInfoResponseType = Omit<AboutPageAttributes, 'content'> & {
+  avatarUrl?: string | null;
+  contentUrl?: string | null;
+};
 
 /**
  * 获取关于我信息
@@ -17,38 +20,44 @@ const getAboutMeInfo = async (): Promise<HandlerResult<AboutMeInfoResponseType>>
   try {
     const aboutMeInfo = await AboutPage.findAll();
     if (aboutMeInfo.length === 0) {
-      return {
-        err: '关于我信息不存在',
-      };
+      return { err: '关于我信息不存在' };
     }
 
     const aboutPage = aboutMeInfo[0].toJSON();
     const id = aboutPage.id;
 
-    // 查询头像URL
-    const aboutPageMedia = await AboutPageMedia.findOne({
+    // 查询所有关联的媒体文件（avatar 和 content）
+    const aboutPageMedias = await AboutPageMedia.findAll({
       where: { aboutPageId: id },
-      include: [
-        {
-          model: MediaFile,
-          as: 'media',
-          attributes: ['fileUrl'],
-        },
-      ],
+      include: [{
+        model: MediaFile,
+        as: 'media',
+        attributes: ['fileUrl'],
+      }],
     });
 
-    const avatarUrl = aboutPageMedia
-      ? (aboutPageMedia.get('media') as { fileUrl: string } | undefined)?.fileUrl || null
-      : null;
+    // 提取 avatar 和 content URL
+    let avatarUrl: string | null = null;
+    let contentUrl: string | null = null;
+
+    aboutPageMedias.forEach((media) => {
+      const mediaData = media.get('media') as { fileUrl: string } | undefined;
+      if (mediaData) {
+        if (media.usageType === 'avatar') {
+          avatarUrl = mediaData.fileUrl;
+        } else if (media.usageType === 'content') {
+          contentUrl = mediaData.fileUrl;
+        }
+      }
+    });
+
+    // 移除 content 字段（如果存在）
+    const aboutPageWithoutContent = aboutPage;
 
     return {
       data: {
-        data: [{ ...aboutPage, avatarUrl }],
-        pagination: {
-          page: 1,
-          size: 1,
-          total: 1,
-        },
+        data: [{ ...aboutPageWithoutContent, avatarUrl, contentUrl }],
+        pagination: { page: 1, size: 1, total: 1 },
       },
       msg: '成功',
     };
@@ -57,9 +66,11 @@ const getAboutMeInfo = async (): Promise<HandlerResult<AboutMeInfoResponseType>>
   }
 };
 
-type UpdateAboutMeInfoParamsType = Exclude<AboutPageAttributes, 'updatedAt' | 'nickname'> & {
+type UpdateAboutMeInfoParamsType = Omit<AboutPageAttributes, 'updatedAt' | 'nickname' | 'content'> & {
   avatarCode?: string; // 头像Code，用于生成头像URL
+  contentCode?: string; // 内容文件Code
   isUpdateAvatar: boolean; // 是否更新头像
+  isUpdateContent: boolean; // 是否更新内容
 };
 
 /**
@@ -77,11 +88,10 @@ const updateAboutMeInfo = async (
       return { err: '关于我信息不存在' };
     }
 
-    // 构建更新数据
-    const updateData: Partial<AboutPageAttributes> = {
+    // 构建更新数据（不包含 content 字段）
+    const updateData: Partial<Omit<AboutPageAttributes, 'content'>> = {
       nickname: param.user?.username || null,
       jobTitle: param.jobTitle,
-      content: param.content,
       personalTags: param.personalTags,
       contactInfo: param.contactInfo,
       socialLinks: param.socialLinks,
@@ -89,47 +99,67 @@ const updateAboutMeInfo = async (
       timeline: param.timeline,
     };
 
-    // 如果需要更新头像
-    if (param.isUpdateAvatar && param.avatarCode) {
-      const confirmResult = await confirmTempMedia([param.avatarCode], transaction);
+    const fileCodesToConfirm: string[] = [];
+    const mediaUpdates: Array<{ code: string; type: 'avatar' | 'content' }> = [];
 
-      // 统一错误处理
+    // 收集需要确认的文件
+    if (param.isUpdateAvatar && param.avatarCode) {
+      fileCodesToConfirm.push(param.avatarCode);
+      mediaUpdates.push({ code: param.avatarCode, type: 'avatar' });
+    }
+    if (param.isUpdateContent && param.contentCode) {
+      fileCodesToConfirm.push(param.contentCode);
+      mediaUpdates.push({ code: param.contentCode, type: 'content' });
+    }
+
+    // 如果有媒体文件需要更新
+    if (fileCodesToConfirm.length > 0) {
+      const confirmResult = await confirmTempMedia(fileCodesToConfirm, transaction);
+
       if (!confirmResult || 'err' in confirmResult || !Array.isArray(confirmResult.data)) {
         await transaction.rollback();
         return { err: (confirmResult as { err?: string })?.err || '确认临时媒体失败' };
       }
 
-      const avatarItem = confirmResult.data.find(
-        (item: ConfirmResultType) => item.fileCode === param.avatarCode
-      );
-      if (!avatarItem) {
-        await transaction.rollback();
-        return { err: '未找到头像文件' };
+      // 处理每个媒体更新
+      for (const update of mediaUpdates) {
+        const mediaItem = confirmResult.data.find(
+          (item: ConfirmResultType) => item.fileCode === update.code
+        );
+
+        if (!mediaItem) {
+          await transaction.rollback();
+          return { err: `未找到${update.type === 'avatar' ? '头像' : '内容'}文件` };
+        }
+
+        // 删除该类型的旧关联
+        await AboutPageMedia.destroy({
+          where: {
+            aboutPageId: param.id,
+            usageType: update.type
+          },
+          transaction,
+        });
+
+        // 创建新关联
+        await AboutPageMedia.create(
+          {
+            aboutPageId: param.id,
+            mediaId: mediaItem.mediaId,
+            usageType: update.type,
+          },
+          { transaction }
+        );
       }
-
-      // 删除旧的关联
-      await AboutPageMedia.destroy({
-        where: { aboutPageId: param.id },
-        transaction,
-      });
-
-      // 创建新的关联
-      await AboutPageMedia.create(
-        {
-          aboutPageId: param.id,
-          mediaId: avatarItem.mediaId,
-          usageType: 'avatar',
-        },
-        { transaction }
-      );
 
       await aboutPage.update(updateData, { transaction });
       await transaction.commit();
 
-      // 移动文件（事务外执行）
+      // 移动文件（事务外）
       await Promise.all(confirmResult.data.map((item: ConfirmResultType) => item.moveFiles()));
     } else {
-      await aboutPage.update(updateData);
+      await aboutPage.update(updateData, { transaction });
+      await transaction.commit();
     }
 
     return { msg: '关于我信息更新成功', data: null };

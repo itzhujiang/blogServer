@@ -7,7 +7,7 @@ export interface AboutPageMediaAttributes {
   id?: number; // 关联ID（可选，创建时自动生成）
   aboutPageId: number; // 关于我页面ID
   mediaId: number; // 媒体文件ID
-  usageType: 'avatar'; // 使用类型（固定为头像）
+  usageType: 'avatar' | 'content'; // 使用类型（avatar=头像, content=内容文件）
   createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
 }
 
@@ -25,7 +25,7 @@ export class AboutPageMedia
   declare id: number | undefined;
   declare aboutPageId: number;
   declare mediaId: number;
-  declare usageType: 'avatar';
+  declare usageType: 'avatar' | 'content';
   declare createdAt: number | null;
 }
 
@@ -50,10 +50,10 @@ export function initAboutPageMediaModel(sequelize: Sequelize): typeof AboutPageM
         comment: '媒体文件ID',
       },
       usageType: {
-        type: DataTypes.ENUM('avatar'),
+        type: DataTypes.ENUM('avatar', 'content'),
         allowNull: false,
         defaultValue: 'avatar',
-        comment: '使用类型 (avatar=头像)',
+        comment: '使用类型 (avatar=头像, content=内容文件)',
       },
       createdAt: {
         type: DataTypes.BIGINT,
