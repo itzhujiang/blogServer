@@ -74,6 +74,9 @@ export const reviewCommentValidation = [
   query('status')
     .notEmpty()
     .withMessage('状态不能为空')
-    .isIn(['approved', 'spam', 'trash'])
-    .withMessage('状态必须是 pending, approved, spam 或 trash'),
+    .isIn(['approved', 'spam'])
+    .withMessage('状态必须是 approved 或 spam'),
+];
+
+export const delCommentValidation = [query('id').notEmpty().withMessage('评论ID不能为空').isInt({ min: 1 }).withMessage('评论ID必须是大于0的整数').toInt(),
 ];

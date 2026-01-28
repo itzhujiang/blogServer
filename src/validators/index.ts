@@ -18,7 +18,11 @@ export {
 export { uploadValidation } from './blog/mediaFileValidator';
 export { updateAboutMeValidation } from './blog/aboutMeValidator';
 export { updateSiteSettingsValidation } from './blog/settingsValidator';
-export { getCommentValidation, reviewCommentValidation } from './blog/commentValidator';
+export {
+  getCommentValidation,
+  reviewCommentValidation,
+  delCommentValidation,
+} from './blog/commentValidator';
 
 // 验证错误处理中间件
 export const handleValidationErrors = (req: Request, res: Response, next: NextFunction): void => {

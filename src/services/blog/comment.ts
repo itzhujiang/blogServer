@@ -175,7 +175,7 @@ const getCommentsList = async (
 
 type ReviewCommentParamType = {
   id: number;
-  status: 'pending' | 'approved' | 'spam' | 'trash';
+  status: 'approved' | 'spam';
 }
 /**
  * 更新评论审核状态
@@ -201,11 +201,37 @@ const reviewComment = async (param: ReviewCommentParamType): Promise<HandlerResu
   }
 }
 
+type DelCommentParamType = {
+  /** id */
+  id: number;
+}
+
+const delComment = async (param: DelCommentParamType): Promise<HandlerResult<null>> => {
+  try {
+    const {id} = param;
+    const comment = await Comment.findByPk(id);
+    if (!comment) {
+      return {
+        err: '评论不存在',
+      }
+    }
+    await comment.update({ status: 'trash' });
+    return {
+      data: null,
+      msg: '评论删除成功',
+    };
+  } catch (error) {
+    
+  }
+}
+
 export {
   CommentsRequestType,
   CommentItemType,
   CommentsListResponseType,
   ReviewCommentParamType,
+  DelCommentParamType,
   getCommentsList,
+  delComment,
   reviewComment
 };

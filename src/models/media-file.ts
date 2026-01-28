@@ -157,9 +157,6 @@ export function initMediaFileModel(sequelize: Sequelize): typeof MediaFile {
       },
       indexes: [
         {
-          fields: ['usage_type'],
-        },
-        {
           fields: ['mime_type'],
         },
         {

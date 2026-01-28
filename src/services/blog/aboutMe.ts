@@ -43,7 +43,12 @@ const getAboutMeInfo = async (): Promise<HandlerResult<AboutMeInfoResponseType>>
 
     return {
       data: {
-        data: { ...aboutPage, avatarUrl },
+        data: [{ ...aboutPage, avatarUrl }],
+        pagination: {
+          page: 1,
+          size: 1,
+          total: 1,
+        },
       },
       msg: '成功',
     };
