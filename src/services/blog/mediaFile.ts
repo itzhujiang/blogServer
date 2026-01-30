@@ -312,7 +312,11 @@ const confirmTempMedia = async (
       await tempMedia.save({ transaction });
 
       // 保存 mediaFile 引用，用于移动函数
-      const mediaFileRef = mediaFile;
+      const mediaFileRef = {
+        id: mediaFile.id,
+        storedName: mediaFile.storedName,
+        filePath: mediaFile.filePath,
+      };
 
       // 创建移动函数（事务提交后调用）
       const moveFiles = async () => {
@@ -332,13 +336,22 @@ const confirmTempMedia = async (
           const newFilePath = path.join('uploads', 'file', year, month, newStoredName);
           const newFileUrl = `/uploads/file/${year}/${month}/${newStoredName}`;
 
-          await mediaFileRef.update({
-            storedName: newStoredName,
-            filePath: newFilePath,
-            fileUrl: newFileUrl,
-          });
+          // 使用 Sequelize update，需要用新的查询来避开事务隔离
+          await MediaFile.update(
+            {
+              storedName: newStoredName,
+              filePath: newFilePath,
+              fileUrl: newFileUrl,
+              updatedAt: Date.now(),
+            },
+            {
+              where: { id: mediaFileRef.id },
+              transaction: null,
+            }
+          );
         } catch (error) {
           console.error('移动文件失败:', error);
+          throw new Error('移动文件失败:' + error);
         }
       };
 
@@ -364,7 +377,7 @@ const confirmTempMedia = async (
 
   return {
     data: {
-      data: results,
+      data: results as ConfirmResultType[],
     },
   };
 };

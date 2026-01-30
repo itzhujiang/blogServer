@@ -13,7 +13,10 @@ router.get('/info',  asyncHandler<null, AboutMeInfoResponseType, 'get'>(async ()
 
 // 修改关于我信息
 router.put('/update', [...updateAboutMeValidation, handleValidationErrors], asyncHandler<UpdateAboutMeInfoParamsType, null, 'put'>(async (req) => {
-    return await updateAboutMeInfo(req.body);
+    return await updateAboutMeInfo({
+      ...req.body,
+      user: req.user,
+    });
 }))
 
 export default router;

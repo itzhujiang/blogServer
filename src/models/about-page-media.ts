@@ -65,7 +65,9 @@ export function initAboutPageMediaModel(sequelize: Sequelize): typeof AboutPageM
       sequelize,
       tableName: 'about_page_media',
       underscored: true,
-      timestamps: false,
+      timestamps: true,
+      createdAt: 'createdAt',
+      updatedAt: false,
       hooks: {
         beforeCreate: (instance: AboutPageMedia) => {
           instance.createdAt = Date.now();

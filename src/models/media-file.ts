@@ -132,11 +132,13 @@ export function initMediaFileModel(sequelize: Sequelize): typeof MediaFile {
       createdAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '创建时间（毫秒级Unix时间戳）',
       },
       updatedAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '更新时间（毫秒级Unix时间戳）',
       },
     },
@@ -144,13 +146,10 @@ export function initMediaFileModel(sequelize: Sequelize): typeof MediaFile {
       sequelize,
       tableName: 'media_files',
       underscored: true,
-      timestamps: false,
+      timestamps: true,
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
       hooks: {
-        beforeCreate: (instance: MediaFile) => {
-          const now = Date.now();
-          instance.createdAt = now;
-          instance.updatedAt = now;
-        },
         beforeUpdate: (instance: MediaFile) => {
           instance.updatedAt = Date.now();
         },

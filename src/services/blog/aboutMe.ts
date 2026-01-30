@@ -90,7 +90,7 @@ const updateAboutMeInfo = async (
 
     // 构建更新数据（不包含 content 字段）
     const updateData: Partial<Omit<AboutPageAttributes, 'content'>> = {
-      nickname: param.user?.username || null,
+      nickname: param.user?.name || null,
       jobTitle: param.jobTitle,
       personalTags: param.personalTags,
       contactInfo: param.contactInfo,
@@ -98,7 +98,6 @@ const updateAboutMeInfo = async (
       skills: param.skills,
       timeline: param.timeline,
     };
-
     const fileCodesToConfirm: string[] = [];
     const mediaUpdates: Array<{ code: string; type: 'avatar' | 'content' }> = [];
 
@@ -115,15 +114,21 @@ const updateAboutMeInfo = async (
     // 如果有媒体文件需要更新
     if (fileCodesToConfirm.length > 0) {
       const confirmResult = await confirmTempMedia(fileCodesToConfirm, transaction);
+      if (
+        !confirmResult ||
+        'err' in confirmResult ||
+        !confirmResult.data ||
+        !Array.isArray(confirmResult.data.data)
+      ) {
+        console.log('confirmResult.data', JSON.stringify(confirmResult));
 
-      if (!confirmResult || 'err' in confirmResult || !Array.isArray(confirmResult.data)) {
         await transaction.rollback();
         return { err: (confirmResult as { err?: string })?.err || '确认临时媒体失败' };
       }
 
       // 处理每个媒体更新
       for (const update of mediaUpdates) {
-        const mediaItem = confirmResult.data.find(
+        const mediaItem = confirmResult.data.data.find(
           (item: ConfirmResultType) => item.fileCode === update.code
         );
 
@@ -136,7 +141,7 @@ const updateAboutMeInfo = async (
         await AboutPageMedia.destroy({
           where: {
             aboutPageId: param.id,
-            usageType: update.type
+            usageType: update.type,
           },
           transaction,
         });
@@ -154,9 +159,8 @@ const updateAboutMeInfo = async (
 
       await aboutPage.update(updateData, { transaction });
       await transaction.commit();
-
-      // 移动文件（事务外）
-      await Promise.all(confirmResult.data.map((item: ConfirmResultType) => item.moveFiles()));
+      // 事务提交后，移动文件
+      await Promise.all(confirmResult.data.data.map((item: ConfirmResultType) => item.moveFiles()));
     } else {
       await aboutPage.update(updateData, { transaction });
       await transaction.commit();

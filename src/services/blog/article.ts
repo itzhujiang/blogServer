@@ -297,13 +297,13 @@ const addArticle = async (
         err: confirmResult.err,
       };
     }
-    if (!Array.isArray(confirmResult.data)) {
+    if (!confirmResult.data || !Array.isArray(confirmResult.data.data)) {
       return {
         err: '确认临时媒体失败',
       };
     }
     // 获取 主文件 url
-    const articleFileUrl = confirmResult.data.find(
+    const articleFileUrl = confirmResult.data.data.find(
       item => item.fileCode === param.articleCode
     )?.fileUrl;
     if (!articleFileUrl) {
@@ -320,7 +320,7 @@ const addArticle = async (
           slug: param.slug,
           filePath: articleFileUrl,
           excerpt: param.excerpt,
-          thumbnailUrl: confirmResult.data.find(item => item.fileCode === param.thumbnailCode)
+          thumbnailUrl: confirmResult.data.data.find(item => item.fileCode === param.thumbnailCode)
             ?.fileUrl,
           authorName: param.user?.name || '翎羽',
           status: 'published',
@@ -329,7 +329,7 @@ const addArticle = async (
       );
 
       // 2. 创建媒体关联
-      const articleMediaCreates = confirmResult.data.map(item =>
+      const articleMediaCreates = confirmResult.data.data.map(item =>
         ArticleMedia.create(
           {
             articleId: article.id,
@@ -338,8 +338,8 @@ const addArticle = async (
               item.fileCode === param.articleCode
                 ? 'content'
                 : item.fileCode === param.thumbnailCode
-                ? 'thumbnail'
-                : 'attachment',
+                  ? 'thumbnail'
+                  : 'attachment',
             sortOrder: 0,
           },
           { transaction }
@@ -364,34 +364,30 @@ const addArticle = async (
       await transaction.commit();
 
       // 事务提交后，移动文件并处理文章内容
-      if (confirmResult.data) {
-        // 移动文件到永久目录
-        await Promise.all(confirmResult.data.map(item => item.moveFiles()));
+      if (confirmResult.data && Array.isArray(confirmResult.data)) {
+        await Promise.all(confirmResult.data.data.map(item => item.moveFiles()));
 
-        // 读取文章内容，替换 img 和 video 标签的 src 内容是 Markdown 格式
-        const articleMDFile = path.join(process.cwd(), articleFileUrl);
-        const articleMDContent = fs.readFileSync(articleMDFile, 'utf-8');
-        const tempToPermanentMapping = new Map<string, string>();
-        if (param.attachmentCode) {
-          param.attachmentCode.forEach(code => {
-            const fileInfo = (confirmResult.data?.data as ConfirmResultType[]).find(
-              item => item.fileCode === code
-            );
-            if (fileInfo) {
-              tempToPermanentMapping.set(fileInfo.fileCode, fileInfo.fileUrl);
-            }
-          });
-        }
-        const processedContent = processArticleContent(articleMDContent, tempToPermanentMapping);
-        fs.writeFile(articleMDFile, processedContent, 'utf-8', err => {
-          if (err) {
-            throw new Error('写入处理后文章内容失败:' + err);
+        // 处理文章内容，替换临时 src 为永久路径
+        if (articleFileUrl) {
+          const articleMDFile = path.join(process.cwd(), articleFileUrl);
+          const articleMDContent = fs.readFileSync(articleMDFile, 'utf-8');
+          const tempToPermanentMapping = new Map<string, string>();
+          const data = confirmResult.data!.data;
+          if (param.attachmentCode) {
+            param.attachmentCode.forEach(code => {
+              const fileInfo = data.find(item => item.fileCode === code);
+              if (fileInfo) {
+                tempToPermanentMapping.set(fileInfo.fileCode, fileInfo.fileUrl);
+              }
+            });
           }
-        });
+          const processedContent = processArticleContent(articleMDContent, tempToPermanentMapping);
+          fs.writeFileSync(articleMDFile, processedContent, 'utf-8');
 
-        // 计算阅读时间并更新文章
-        const readingTime = Math.ceil(processedContent.length / 500);
-        await article.update({ readingTime });
+          // 计算阅读时间并更新文章
+          const readingTime = Math.ceil(processedContent.length / 500);
+          await article.update({ readingTime });
+        }
       }
 
       return {
@@ -500,14 +496,14 @@ const updateArticle = async (
         err: confirmResult.err,
       };
     }
-    if (!Array.isArray(confirmResult.data)) {
+    if (!confirmResult.data || !Array.isArray(confirmResult.data.data)) {
       await transaction.rollback();
       return {
         err: '确认临时媒体失败',
       };
     }
 
-    const data = confirmResult.data;
+    const data = confirmResult.data.data;
 
     try {
       // 5.1 获取文章文件 URL
@@ -566,8 +562,8 @@ const updateArticle = async (
                 item.fileCode === param.articleCode
                   ? 'content'
                   : item.fileCode === param.thumbnailCode
-                  ? 'thumbnail'
-                  : 'attachment',
+                    ? 'thumbnail'
+                    : 'attachment',
               sortOrder: 0,
             },
             { transaction }
@@ -595,29 +591,32 @@ const updateArticle = async (
       // 5.5 提交事务
       await transaction.commit();
 
-      // 6. 事务提交后，移动文件并处理文章内容
-      await Promise.all(data.map((item: ConfirmResultType) => item.moveFiles()));
+      // 5.6 事务提交后，移动文件并处理文章内容
+      if (data && data.length > 0) {
+        await Promise.all(data.map((item: ConfirmResultType) => item.moveFiles()));
 
-      if (param.isUpdateArticle && articleFileUrl) {
-        const articleMDFile = path.join(process.cwd(), articleFileUrl);
-        const articleMDContent = fs.readFileSync(articleMDFile, 'utf-8');
-        const tempToPermanentMapping = new Map<string, string>();
+        // 处理文章内容，替换临时 src 为永久路径
+        if (param.isUpdateArticle && articleFileUrl) {
+          const articleMDFile = path.join(process.cwd(), articleFileUrl);
+          const articleMDContent = fs.readFileSync(articleMDFile, 'utf-8');
+          const tempToPermanentMapping = new Map<string, string>();
 
-        if (param.attachmentCode) {
-          param.attachmentCode.forEach(code => {
-            const fileInfo = data.find((item: ConfirmResultType) => item.fileCode === code);
-            if (fileInfo) {
-              tempToPermanentMapping.set(fileInfo.fileCode, fileInfo.fileUrl);
-            }
-          });
+          if (param.attachmentCode) {
+            param.attachmentCode.forEach(code => {
+              const fileInfo = data.find((item: ConfirmResultType) => item.fileCode === code);
+              if (fileInfo) {
+                tempToPermanentMapping.set(fileInfo.fileCode, fileInfo.fileUrl);
+              }
+            });
+          }
+
+          const processedContent = processArticleContent(articleMDContent, tempToPermanentMapping);
+          fs.writeFileSync(articleMDFile, processedContent, 'utf-8');
+
+          // 计算阅读时间并更新文章
+          const readingTime = Math.ceil(processedContent.length / 500);
+          await article.update({ readingTime });
         }
-
-        const processedContent = processArticleContent(articleMDContent, tempToPermanentMapping);
-        fs.writeFileSync(articleMDFile, processedContent, 'utf-8');
-
-        // 计算阅读时间并更新文章
-        const readingTime = Math.ceil(processedContent.length / 500);
-        await article.update({ readingTime });
       }
 
       return {
