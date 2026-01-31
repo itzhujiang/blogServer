@@ -79,6 +79,7 @@ async function seedInitialData() {
           settingType: 'string',
           description: '网站标题',
           updatedAt: now,
+          createdAt: now,
         },
         {
           settingKey: 'site_description',
@@ -86,6 +87,7 @@ async function seedInitialData() {
           settingType: 'string',
           description: '网站描述',
           updatedAt: now,
+          createdAt: now,
         },
         {
           settingKey: 'site_keywords',
@@ -93,6 +95,7 @@ async function seedInitialData() {
           settingType: 'string',
           description: '网站关键词',
           updatedAt: now,
+          createdAt: now,
         },
         {
           settingKey: 'posts_per_page',
@@ -100,6 +103,7 @@ async function seedInitialData() {
           settingType: 'number',
           description: '每页文章数量',
           updatedAt: now,
+          createdAt: now,
         },
         {
           settingKey: 'enable_comments',
@@ -107,6 +111,7 @@ async function seedInitialData() {
           settingType: 'boolean',
           description: '是否开启评论',
           updatedAt: now,
+          createdAt: now,
         },
         {
           settingKey: 'comment_moderation',
@@ -114,6 +119,7 @@ async function seedInitialData() {
           settingType: 'boolean',
           description: '评论是否需要审核',
           updatedAt: now,
+          createdAt: now,
         },
         {
           settingKey: 'footer_copyright',
@@ -121,6 +127,7 @@ async function seedInitialData() {
           settingType: 'string',
           description: '页脚版权信息',
           updatedAt: now,
+          createdAt: now,
         },
       ]);
       console.log('✓ 网站配置数据插入完成');

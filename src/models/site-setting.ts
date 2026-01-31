@@ -11,6 +11,7 @@ export interface SiteSettingAttributes {
   settingType: SettingTypeLiteral; // 值类型（string=字符串, number=数字, boolean=布尔, json=JSON）
   description?: string | null; // 配置说明
   updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
+  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -30,6 +31,7 @@ export class SiteSetting
   declare settingType: SettingTypeLiteral;
   declare description: string | null;
   declare updatedAt: number | null;
+  declare createdAt: number | null;
 }
 
 // 初始化函数
@@ -69,6 +71,11 @@ export function initSiteSettingModel(sequelize: Sequelize): typeof SiteSetting {
         allowNull: false,
         comment: '更新时间（毫秒级Unix时间戳）',
       },
+      createdAt: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        comment: '创建时间（毫秒级Unix时间戳）',
+      },
     },
     {
       sequelize,
@@ -77,7 +84,9 @@ export function initSiteSettingModel(sequelize: Sequelize): typeof SiteSetting {
       timestamps: false,
       hooks: {
         beforeCreate: (instance: SiteSetting) => {
-          instance.updatedAt = Date.now();
+          const now = Date.now();
+          instance.createdAt = now;
+          instance.updatedAt = now;
         },
         beforeUpdate: (instance: SiteSetting) => {
           instance.updatedAt = Date.now();

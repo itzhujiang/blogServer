@@ -885,6 +885,13 @@
 | **URL** | `/api/blog/site-setting/getSettings` |
 | **Method** | `GET` |
 
+**请求参数 (Query)：**
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|:----:|------|
+| page | number | 否 | 页码，默认 1 |
+| size | number | 否 | 每页数量，默认 10，最大 100 |
+
 **响应示例：**
 ```json
 {
@@ -898,7 +905,8 @@
         "settingValue": "我的博客",
         "settingType": "string",
         "description": "网站标题",
-        "updatedAt": 1704067200000
+        "updatedAt": 1704067200000,
+        "createdAt": 1704067200000
       },
       {
         "id": 2,
@@ -906,20 +914,26 @@
         "settingValue": "10",
         "settingType": "number",
         "description": "每页文章数",
-        "updatedAt": 1704067200000
+        "updatedAt": 1704067200000,
+        "createdAt": 1704067200000
       }
-    ]
+    ],
+    "pagination": {
+      "page": 1,
+      "size": 10,
+      "total": 20
+    }
   }
 }
 ```
 
 ---
 
-### 7.2 更新站点设置
+### 7.2 添加站点设置
 
 | 属性 | 值 |
 |------|-----|
-| **URL** | `/api/blog/site-setting/updateSettings` |
+| **URL** | `/api/blog/site-setting/addSettings` |
 | **Method** | `POST` |
 | **Content-Type** | `application/json` |
 
@@ -927,11 +941,67 @@
 
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|:----:|------|
-| id | number | 是 | 设置ID |
-| settingKey | string | 是 | 设置键 |
-| settingType | string | 是 | 类型：string/number/boolean/json |
+| settingKey | string | 是 | 设置键（唯一标识） |
 | settingValue | any | 是 | 设置值 |
+| settingType | string | 是 | 类型：string/number/boolean/json |
 | description | string | 是 | 设置描述 |
+
+**请求示例：**
+```json
+{
+  "settingKey": "site_title",
+  "settingValue": "我的博客",
+  "settingType": "string",
+  "description": "网站标题"
+}
+```
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "站点设置添加成功",
+  "data": null
+}
+```
+
+**错误响应（设置键已存在）：**
+```json
+{
+  "code": 500,
+  "msg": "已存在该站点设置",
+  "data": null
+}
+```
+
+---
+
+### 7.3 更新站点设置
+
+| 属性 | 值 |
+|------|-----|
+| **URL** | `/api/blog/site-setting/updateSettings` |
+| **Method** | `PUT` |
+| **Content-Type** | `application/json` |
+
+**请求参数：**
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|:----:|------|
+| id | number | 是 | 设置ID |
+| settingKey | string | 否 | 设置键 |
+| settingType | string | 否 | 类型：string/number/boolean/json |
+| settingValue | any | 否 | 设置值 |
+| description | string | 否 | 设置描述 |
+
+**请求示例：**
+```json
+{
+  "id": 1,
+  "settingValue": "新的博客名称",
+  "description": "网站标题（已更新）"
+}
+```
 
 **成功响应：**
 ```json
@@ -950,6 +1020,20 @@
   "data": null
 }
 ```
+
+---
+
+### 7.4 响应字段说明
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| id | number | 设置ID |
+| settingKey | string | 配置键名（唯一标识） |
+| settingValue | string/number/boolean/json | 配置值 |
+| settingType | string | 值类型（string/number/boolean/json） |
+| description | string | 配置说明 |
+| updatedAt | number | 更新时间（毫秒级Unix时间戳） |
+| createdAt | number | 创建时间（毫秒级Unix时间戳） |
 
 ---
 

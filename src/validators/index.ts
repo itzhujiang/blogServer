@@ -17,7 +17,11 @@ export {
 } from './blog/categoryValidator';
 export { uploadValidation } from './blog/mediaFileValidator';
 export { updateAboutMeValidation } from './blog/aboutMeValidator';
-export { updateSiteSettingsValidation } from './blog/settingsValidator';
+export {
+  updateSiteSettingsValidation,
+  getSiteSettingsValidation,
+  addSiteSettingsValidation,
+} from './blog/settingsValidator';
 export {
   getCommentValidation,
   reviewCommentValidation,
