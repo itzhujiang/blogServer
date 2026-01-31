@@ -262,12 +262,17 @@ const addArticle = async (
         err: '文章URL友好标识已存在，请更换后重新提交',
       };
     }
-
+    console.log('param.categories', param.categories);
+    
     const isCategoryExist = await Category.count({
       where: {
-        id: param.categories || [],
+        id: {
+          [Op.in]: param.categories || [],
+        },
       },
     });
+    console.log(isCategoryExist);
+    
     if (!isCategoryExist) {
       return {
         err: '所选分类不存在，请更换后重新提交',
