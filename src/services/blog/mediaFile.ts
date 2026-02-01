@@ -317,15 +317,15 @@ const confirmTempMedia = async (
         storedName: mediaFile.storedName,
         filePath: mediaFile.filePath,
       };
-
+      const year = new Date().getFullYear().toString();
+      const month = (new Date().getMonth() + 1).toString().padStart(2, '0');
+      const newStoredName = `${uuidv4()}${path.extname(mediaFileRef.storedName)}`;
+      const newFileUrl = `/uploads/file/${year}/${month}/${newStoredName}`;
       // 创建移动函数（事务提交后调用）
       const moveFiles = async () => {
-        const year = new Date().getFullYear().toString();
-        const month = (new Date().getMonth() + 1).toString().padStart(2, '0');
         const permDir = path.join(process.cwd(), 'uploads', 'file', year, month);
         await ensureDir(permDir);
 
-        const newStoredName = `${uuidv4()}${path.extname(mediaFileRef.storedName)}`;
         const newPath = path.join(permDir, newStoredName);
 
         try {
@@ -334,7 +334,6 @@ const confirmTempMedia = async (
 
           // 更新记录路径
           const newFilePath = path.join('uploads', 'file', year, month, newStoredName);
-          const newFileUrl = `/uploads/file/${year}/${month}/${newStoredName}`;
 
           // 使用 Sequelize update，需要用新的查询来避开事务隔离
           await MediaFile.update(
@@ -358,7 +357,7 @@ const confirmTempMedia = async (
       results.push({
         fileCode: code,
         mediaId: mediaFile.id,
-        fileUrl: mediaFile.fileUrl,
+        fileUrl: newFileUrl,
         moveFiles,
       });
     } catch (error) {

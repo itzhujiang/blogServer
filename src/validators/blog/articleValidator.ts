@@ -64,7 +64,7 @@ export const addArticleValidation = [
   body('thumbnailCode').optional().isString().withMessage('封面图片代码必须是字符串'),
   body('excerpt').notEmpty().withMessage('请输入文章摘要'),
   body('articleCode').notEmpty().withMessage('请上传文章内容'),
-  body('attachmentCode').optional().isArray().withMessage('文章附件必须是数组'),
+  body('attachmentList').optional().isArray().withMessage('文章附件必须是数组'),
   body('categories').optional().isArray().withMessage('文章分类必须是数组'),
 ];
 
@@ -78,11 +78,11 @@ export const updateArticleValidation = [
   body('thumbnailCode').optional().isString().withMessage('封面图片代码必须是字符串'),
   body('excerpt').optional().notEmpty().withMessage('请输入文章摘要'),
   body('articleCode').optional().notEmpty().withMessage('请上传文章内容'),
-  body('attachmentCode').optional().isArray().withMessage('文章附件必须是数组'),
+  body('attachmentList').optional().isArray().withMessage('文章附件必须是数组'),
   body('categories').optional().isArray().withMessage('文章分类必须是数组'),
   body('isUpdateArticle').optional().isBoolean().withMessage('是否更新文章必须是布尔值'),
   body('isUpdateThumbnail').optional().isBoolean().withMessage('是否更新缩略图必须是布尔值'),
-]
+];
 
 export const delArticleValidation = [
   query('id').notEmpty().isInt({ min: 1 }).withMessage('文章ID必须是正整数').toInt(),

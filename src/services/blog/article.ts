@@ -238,7 +238,10 @@ type AddArticleRequsetType = {
   /** 文章内容文件Code */
   articleCode: string;
   /** 附件列表 */
-  attachmentCode?: string[];
+  attachmentList?: {
+    code: string;
+    source: string;
+  }[];
   /** 分类ID列表 */
   categories?: number[];
 };
@@ -263,7 +266,7 @@ const addArticle = async (
       };
     }
     console.log('param.categories', param.categories);
-    
+
     const isCategoryExist = await Category.count({
       where: {
         id: {
@@ -272,7 +275,7 @@ const addArticle = async (
       },
     });
     console.log(isCategoryExist);
-    
+
     if (!isCategoryExist) {
       return {
         err: '所选分类不存在，请更换后重新提交',
@@ -283,8 +286,8 @@ const addArticle = async (
       codeArr.push(param.thumbnailCode);
     }
     codeArr.push(param.articleCode);
-    if (param.attachmentCode && param.attachmentCode.length > 0) {
-      codeArr.push(...param.attachmentCode);
+    if (param.attachmentList && param.attachmentList.length > 0) {
+      codeArr.push(...param.attachmentList.map(item => item.code));
     }
     // 使用事务确保数据一致性
     const transaction = await sequelize.transaction();
@@ -317,9 +320,10 @@ const addArticle = async (
       };
     }
 
+    let article: Article;
     try {
       // 1. 创建文章
-      const article = await Article.create(
+      article = await Article.create(
         {
           title: param.title,
           slug: param.slug,
@@ -367,22 +371,29 @@ const addArticle = async (
 
       // 提交事务
       await transaction.commit();
+    } catch (error) {
+      // 回滚事务
+      await transaction.rollback();
+      throw error;
+    }
 
-      // 事务提交后，移动文件并处理文章内容
-      if (confirmResult.data && Array.isArray(confirmResult.data)) {
+    // 事务提交后，移动文件并处理文章内容（独立于事务）
+    try {
+      console.log('confirmResult.data', confirmResult.data, articleFileUrl);
+      if (confirmResult.data && Array.isArray(confirmResult.data.data)) {
         await Promise.all(confirmResult.data.data.map(item => item.moveFiles()));
 
         // 处理文章内容，替换临时 src 为永久路径
         if (articleFileUrl) {
           const articleMDFile = path.join(process.cwd(), articleFileUrl);
           const articleMDContent = fs.readFileSync(articleMDFile, 'utf-8');
-          const tempToPermanentMapping = new Map<string, string>();
           const data = confirmResult.data!.data;
-          if (param.attachmentCode) {
-            param.attachmentCode.forEach(code => {
-              const fileInfo = data.find(item => item.fileCode === code);
+          const tempToPermanentMapping = new Map<string, string>();
+          if (param.attachmentList) {
+            param.attachmentList.forEach(it => {
+              const fileInfo = data.find(item => item.fileCode === it.code);
               if (fileInfo) {
-                tempToPermanentMapping.set(fileInfo.fileCode, fileInfo.fileUrl);
+                tempToPermanentMapping.set(it.source, fileInfo.fileUrl);
               }
             });
           }
@@ -394,16 +405,15 @@ const addArticle = async (
           await article.update({ readingTime });
         }
       }
-
-      return {
-        msg: '添加文章成功',
-        data: null,
-      };
-    } catch (error) {
-      // 回滚事务
-      await transaction.rollback();
-      throw error;
+    } catch (postCommitError) {
+      // 事务已提交，这里只记录错误，不影响返回结果
+      console.error('文件处理失败:', postCommitError);
     }
+
+    return {
+      msg: '添加文章成功',
+      data: null,
+    };
   } catch (error) {
     throw new Error('添加文章失败:' + error);
   }
@@ -459,8 +469,8 @@ const updateArticle = async (
     }
     if (param.isUpdateArticle) {
       codeArr.push(param.articleCode);
-      if (param.attachmentCode && param.attachmentCode.length > 0) {
-        codeArr.push(...param.attachmentCode);
+      if (param.attachmentList && param.attachmentList.length > 0) {
+        codeArr.push(...param.attachmentList.map(item => item.code));
       }
     }
 
@@ -606,11 +616,11 @@ const updateArticle = async (
           const articleMDContent = fs.readFileSync(articleMDFile, 'utf-8');
           const tempToPermanentMapping = new Map<string, string>();
 
-          if (param.attachmentCode) {
-            param.attachmentCode.forEach(code => {
-              const fileInfo = data.find((item: ConfirmResultType) => item.fileCode === code);
+          if (param.attachmentList) {
+            param.attachmentList.forEach(it => {
+              const fileInfo = data.find((item: ConfirmResultType) => item.fileCode === it.code);
               if (fileInfo) {
-                tempToPermanentMapping.set(fileInfo.fileCode, fileInfo.fileUrl);
+                tempToPermanentMapping.set(it.source, fileInfo.fileUrl);
               }
             });
           }

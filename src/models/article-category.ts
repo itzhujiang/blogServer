@@ -46,6 +46,9 @@ export function initArticleCategoryModel(sequelize: Sequelize): typeof ArticleCa
       sequelize,
       tableName: 'article_categories',
       underscored: true,
+      timestamps: true,
+      createdAt: 'createdAt',
+      updatedAt: false,
       hooks: {
         beforeCreate: (instance: ArticleCategory) => {
           const now = Date.now();

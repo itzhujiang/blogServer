@@ -73,7 +73,10 @@ export function initArticleMediaModel(sequelize: Sequelize): typeof ArticleMedia
     {
       sequelize,
       tableName: 'article_media',
+      timestamps: true,
       underscored: true,
+      createdAt: 'createdAt',
+      updatedAt: false,
       hooks: {
         beforeCreate: (instance: ArticleMedia) => {
           instance.createdAt = Date.now();
