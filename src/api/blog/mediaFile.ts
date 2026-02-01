@@ -21,12 +21,6 @@ import {
 
 const router = express.Router();
 
-// 配置 multer，限制文件大小（用于单文件上传）
-const upload = multer({
-  limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB
-  },
-});
 
 // 配置 multer（用于大文件分片上传，不限制单个分片大小）
 const chunkUpload = multer({
@@ -36,28 +30,11 @@ const chunkUpload = multer({
   },
 });
 
-// 处理 multer 错误
-const handleUploadError = (err: Error | null, res: express.Response): boolean => {
-  if (err instanceof MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      res.status(500).json({ err: '文件大小不能超过5MB', code: 500 });
-      return true;
-    }
-  }
-  return false;
-};
-
 /**
  * 单文件上传
  */
 router.post(
   '/upload',
-  (req: Request, res: Response, next: NextFunction) => {
-    upload.single('file')(req, res, err => {
-      if (handleUploadError(err, res)) return;
-      next();
-    });
-  },
   [...uploadValidation, handleValidationErrors],
   asyncHandler<UploadRequsetType, UploadResponseType, 'post'>(async req => {
     if (!req.file) {

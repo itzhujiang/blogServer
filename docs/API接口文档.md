@@ -218,7 +218,7 @@
 | thumbnailCode | string | 否 | 缩略图文件Code |
 | excerpt | string | 是 | 文章摘要 |
 | articleCode | string | 是 | 文章内容文件Code |
-| attachmentCode | string[] | 否 | 附件文件Code数组 |
+| attachmentList | {code: string, source: string} | 否 | 附件文件Code数组 |
 | categories | number[] | 否 | 分类ID数组 |
 
 **成功响应：**
@@ -250,7 +250,7 @@
 | thumbnailCode | string | 否 | 缩略图文件Code |
 | excerpt | string | 否 | 文章摘要 |
 | articleCode | string | 否 | 文章内容文件Code |
-| attachmentCode | string[] | 否 | 附件文件Code数组 |
+| attachmentList | {code: string, source: string} | 否 | 附件文件Code数组 |
 | categories | number[] | 否 | 分类ID数组 |
 | isUpdateArticle | boolean | 否 | 是否更新文章内容 |
 | isUpdateThumbnail | boolean | 否 | 是否更新缩略图 |
@@ -572,7 +572,7 @@
 
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|:----:|------|
-| file | File | 是 | 上传的文件（最大 5MB） |
+| file | File | 是 | 上传的文件（最大 **2MB**） |
 
 **响应示例：**
 ```json
@@ -604,6 +604,7 @@
 |--------|------|:----:|------|
 | fileName | string | 是 | 文件名 |
 | fileSize | number | 是 | 文件大小（字节） |
+| mimeType | string | 是 | 文件 MIME 类型 |
 | fileHash | string | 是 | 文件 MD5（用于秒传） |
 | chunkSize | number | 否 | 分片大小，默认 2MB |
 
