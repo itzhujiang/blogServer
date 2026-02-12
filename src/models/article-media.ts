@@ -73,13 +73,13 @@ export function initArticleMediaModel(sequelize: Sequelize): typeof ArticleMedia
     {
       sequelize,
       tableName: 'article_media',
-      timestamps: true,
       underscored: true,
-      createdAt: 'createdAt',
-      updatedAt: false,
+      timestamps: false,
       hooks: {
-        beforeCreate: (instance: ArticleMedia) => {
-          instance.createdAt = Date.now();
+        beforeValidate: (instance: ArticleMedia) => {
+          if (!instance.createdAt) {
+            instance.createdAt = Date.now();
+          }
           if (!instance.sortOrder) {
             instance.sortOrder = 0;
           }

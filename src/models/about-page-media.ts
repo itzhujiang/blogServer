@@ -65,12 +65,12 @@ export function initAboutPageMediaModel(sequelize: Sequelize): typeof AboutPageM
       sequelize,
       tableName: 'about_page_media',
       underscored: true,
-      timestamps: true,
-      createdAt: 'createdAt',
-      updatedAt: false,
+      timestamps: false,
       hooks: {
-        beforeCreate: (instance: AboutPageMedia) => {
-          instance.createdAt = Date.now();
+        beforeValidate: (instance: AboutPageMedia) => {
+          if (!instance.createdAt) {
+            instance.createdAt = Date.now();
+          }
           if (!instance.usageType) {
             instance.usageType = 'avatar';
           }

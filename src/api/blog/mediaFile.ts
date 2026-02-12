@@ -30,11 +30,14 @@ const chunkUpload = multer({
   },
 });
 
+const upload = multer();
+
 /**
  * 单文件上传
  */
 router.post(
   '/upload',
+  upload.single('file'),
   [...uploadValidation, handleValidationErrors],
   asyncHandler<UploadRequsetType, UploadResponseType, 'post'>(async req => {
     if (!req.file) {

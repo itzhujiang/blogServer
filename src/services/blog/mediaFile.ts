@@ -213,14 +213,23 @@ const confirmTempMedia = async (
   const transaction = externalTransaction || (await sequelize.transaction());
   const shouldAutoCommit = !externalTransaction;
 
+  // 校验 codes 数组，过滤无效值
+  const validCodes = codes.filter(c => c != null && c !== '');
+  if (validCodes.length !== codes.length) {
+    if (shouldAutoCommit) {
+      await transaction.rollback();
+    }
+    return { err: '存在无效的文件凭证', code: 500 };
+  }
+
   // 批量查询临时文件记录
   const tempMedias = await TempMedia.findAll({
-    where: { code: codes },
+    where: { code: validCodes },
   });
 
   // 检查是否所有 code 都存在
   const foundCodes = new Set(tempMedias.map(tm => tm.code));
-  const missingCode = codes.find(c => !foundCodes.has(c));
+  const missingCode = validCodes.find(c => !foundCodes.has(c));
   if (missingCode) {
     if (shouldAutoCommit) {
       await transaction.rollback();
@@ -232,7 +241,7 @@ const confirmTempMedia = async (
   const now = Date.now();
 
   // 遍历处理每个文件
-  for (const code of codes) {
+  for (const code of validCodes) {
     const tempMedia = tempMedias.find(tm => tm.code === code)!;
 
     // 检查是否已使用

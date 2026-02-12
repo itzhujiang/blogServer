@@ -46,13 +46,12 @@ export function initArticleCategoryModel(sequelize: Sequelize): typeof ArticleCa
       sequelize,
       tableName: 'article_categories',
       underscored: true,
-      timestamps: true,
-      createdAt: 'createdAt',
-      updatedAt: false,
+      timestamps: false,
       hooks: {
-        beforeCreate: (instance: ArticleCategory) => {
-          const now = Date.now();
-          instance.createdAt = now;
+        beforeValidate: (instance: ArticleCategory) => {
+          if (!instance.createdAt) {
+            instance.createdAt = Date.now();
+          }
         },
       },
       indexes: [

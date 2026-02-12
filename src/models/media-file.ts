@@ -146,10 +146,13 @@ export function initMediaFileModel(sequelize: Sequelize): typeof MediaFile {
       sequelize,
       tableName: 'media_files',
       underscored: true,
-      timestamps: true,
-      createdAt: 'createdAt',
-      updatedAt: 'updatedAt',
+      timestamps: false,
       hooks: {
+        beforeCreate: (instance: MediaFile) => {
+          const now = Date.now();
+          instance.createdAt = now;
+          instance.updatedAt = now;
+        },
         beforeUpdate: (instance: MediaFile) => {
           instance.updatedAt = Date.now();
         },
