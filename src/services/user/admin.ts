@@ -51,7 +51,11 @@ type UserInfoResponseType = Pick<
   AdminUserAttributes,
   'id' | 'email' | 'avatarUrl' | 'displayName' | 'username'
 >;
-
+/**
+ * 获取用户信息
+ * @param parma 
+ * @returns 
+ */
 const getUserInfo = async (parma: {
   id?: number;
 }): Promise<HandlerResult<UserInfoResponseType>> => {

@@ -473,6 +473,21 @@ const updateArticle = async (
         codeArr.push(...param.attachmentList.map(item => item.code));
       }
     }
+    const transaction = await sequelize.transaction();
+    await ArticleCategory.destroy({
+      where: { articleId: param.id },
+      transaction,
+    });
+
+    const articleCategoryCreates = (param.categories || []).map(catId =>
+      ArticleCategory.create(
+        {
+          articleId: param.id,
+          categoryId: catId,
+        },
+        { transaction }
+      )
+    );
 
     // 4. 如果没有文件更新，直接更新文章基础信息
     if (codeArr.length === 0) {
@@ -482,20 +497,24 @@ const updateArticle = async (
           err: '文章不存在，无法更新',
         };
       }
-      await article.update({
-        title: param.title,
-        slug: param.slug,
-        excerpt: param.excerpt,
-        authorName: param.user?.name || '翎羽',
-      });
+      await article.update(
+        {
+          title: param.title,
+          slug: param.slug,
+          excerpt: param.excerpt,
+          authorName: param.user?.name || '翎羽',
+        },
+        {
+          transaction,
+        }
+      );
+      transaction.commit();
       return {
         msg: '修改文章成功',
         data: null,
       };
     }
 
-    // 5. 有文件更新，使用事务处理
-    const transaction = await sequelize.transaction();
     const confirmResult = await confirmTempMedia(codeArr, transaction);
 
     // 检查是否是错误结果
@@ -585,21 +604,6 @@ const updateArticle = async (
           )
         );
       }
-
-      // 5.4 更新分类关联
-      await ArticleCategory.destroy({
-        where: { articleId: param.id },
-        transaction,
-      });
-      const articleCategoryCreates = (param.categories || []).map(catId =>
-        ArticleCategory.create(
-          {
-            articleId: param.id,
-            categoryId: catId,
-          },
-          { transaction }
-        )
-      );
 
       await Promise.all([...articleMediaCreates, ...articleCategoryCreates]);
 
