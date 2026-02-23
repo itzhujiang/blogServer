@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import cron from 'node-cron';
+import compression from 'compression';
 import { initAllModels } from './models';
 import { cleanupExpiredTempFiles } from './services/blog/mediaFile';
 import apiLog from './utils/apiLoggerMid';
@@ -12,6 +13,7 @@ import tokenMiddleware from './utils/tokenMiddleware';
 import errorMiddleware from './utils/errorMiddleware';
 import userRouter from './api/user';
 import blogRouter from './api/blog';
+import aiRouter from './api/ai';
 
 dotenv.config();
 
@@ -79,12 +81,28 @@ startServer().then(() => {
   app.use(express.urlencoded({ extended: true }));
 
   app.use(tokenMiddleware);
+  // 压缩（SSE 请求跳过压缩）
+  app.use(
+    compression({
+      filter: (req, res) => {
+        // 如果是 SSE 请求，不压缩
+        if (req.headers.accept === 'text/event-stream') {
+          return false;
+        }
+        // 默认压缩
+        return compression.filter(req, res);
+      },
+    })
+  );
 
   // 用户接口
   app.use('/api/user', userRouter);
 
   // 博客接口（包含前后台）
   app.use('/api/blog', blogRouter);
+
+  // ai接口（博客使用的ai相关接口）
+  app.use('/api/ai', aiRouter);
 
   // 处理错误
   app.use(errorMiddleware);
