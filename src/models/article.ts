@@ -12,16 +12,16 @@ export interface ArticleAttributes {
   title: string; // 文章标题
   slug: string; // URL友好标识（用于SEO）
   filePath: string; // 服务端文件路径（Markdown文件路径）
-  excerpt?: string | null; // 文章摘要
-  thumbnailUrl?: string | null; // 缩略图URL（文章列表展示用）
+  excerpt: string | null; // 文章摘要
+  thumbnailUrl: string | null; // 缩略图URL（文章列表展示用）
   authorName: string; // 作者名（默认：木心）
   readingTime: number; // 预计阅读时间（分钟）
   viewCount: number; // 浏览次数
   status: ArticleStatusLiteral; // 发布状态（draft=草稿, published=已发布, archived=已归档）
-  publishedAt?: number | null; // 发布时间（毫秒级Unix时间戳）
-  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
-  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
-  deletedAt?: number | null; // 删除时间（软删除，毫秒级Unix时间戳）
+  publishedAt: number | null; // 发布时间（毫秒级Unix时间戳）
+  createdAt: number; // 创建时间（毫秒级Unix时间戳）
+  updatedAt: number; // 更新时间（毫秒级Unix时间戳）
+  deletedAt: number | null; // 删除时间（软删除，毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -55,8 +55,8 @@ export class Article
   declare viewCount: number;
   declare status: ArticleStatusLiteral;
   declare publishedAt: number | null;
-  declare createdAt: number | null;
-  declare updatedAt: number | null;
+  declare createdAt: number;
+  declare updatedAt: number;
   declare deletedAt: number | null;
 
   // 关联

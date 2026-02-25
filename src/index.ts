@@ -12,6 +12,7 @@ import tokenMiddleware from './utils/tokenMiddleware';
 import errorMiddleware from './utils/errorMiddleware';
 import userRouter from './api/user';
 import blogRouter from './api/blog';
+import toolsRouter from './api/tools';
 
 dotenv.config();
 
@@ -86,10 +87,14 @@ startServer().then(() => {
   // 博客接口（包含前后台）
   app.use('/api/blog', blogRouter);
 
+  // 工具接口
+  app.use('/api/tool', toolsRouter);
+
   // 处理错误
   app.use(errorMiddleware);
 
   app.listen(prot, () => {
     console.log(`服务已启动，端口：${prot}`);
   });
+  // prettier-ignore
 });

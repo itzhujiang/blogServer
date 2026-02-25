@@ -9,6 +9,7 @@ import categoryRouter from './category';
 import aboutMeRouter from './aboutMe';
 import siteSettingRouter from './siteSetting';
 import commentRouter from './comment';
+import aiUserRouter from './aiUser';
 
 const router = express.Router();
 
@@ -29,5 +30,8 @@ router.use('/site-setting', siteSettingRouter);
 
 // 评论路由 - /api/blog/comment/*
 router.use('/comment', commentRouter);
+
+// AI用户路由 - /api/blog/ai-user/*
+router.use('/ai-user', aiUserRouter);
 
 export default router;

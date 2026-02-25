@@ -11,15 +11,15 @@ export interface MediaFileAttributes {
   storedName: string; // 存储文件名（UUID格式）
   filePath: string; // 服务端存储路径
   fileUrl: string; // 访问URL
-  fileSize?: number | null; // 文件大小（字节）
-  mimeType?: string | null; // MIME类型（如：image/jpeg）
-  width?: number | null; // 图片宽度（像素）
-  height?: number | null; // 图片高度（像素）
-  altText?: string | null; // 图片描述（用于无障碍访问）
-  uploaderName?: string | null; // 上传者
+  fileSize: number | null; // 文件大小（字节）
+  mimeType: string | null; // MIME类型（如：image/jpeg）
+  width: number | null; // 图片宽度（像素）
+  height: number | null; // 图片高度（像素）
+  altText: string | null; // 图片描述（用于无障碍访问）
+  uploaderName: string | null; // 上传者
   fileHash: string; // 文件MD5
-  createdAt?: number | null; // 上传时间（毫秒级Unix时间戳）
-  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
+  createdAt: number; // 上传时间（毫秒级Unix时间戳）
+  updatedAt: number; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -54,8 +54,8 @@ export class MediaFile
   declare altText: string | null;
   declare uploaderName: string | null;
   declare fileHash: string;
-  declare createdAt: number | null;
-  declare updatedAt: number | null;
+  declare createdAt: number;
+  declare updatedAt: number;
 
   // 关联
   declare static associations: {

@@ -6,7 +6,7 @@ import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 export interface ArticleCategoryAttributes {
   articleId: number; // 文章ID
   categoryId: number; // 分类ID
-  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
+  createdAt: number; // 创建时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -19,7 +19,7 @@ export class ArticleCategory
 {
   declare articleId: number;
   declare categoryId: number;
-  declare createdAt: number | null;
+  declare createdAt: number;
 }
 
 // 初始化函数

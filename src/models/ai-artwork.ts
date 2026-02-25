@@ -9,17 +9,17 @@ export interface AIArtworkAttributes {
   id: number; // 作品ID
   title: string; // 作品标题
   slug: string; // URL标识（用于SEO）
-  description?: string | null; // 作品描述
-  category?: string | null; // 作品分类（如：风景、人物、抽象等）
-  creationPrompt?: string | null; // AI生成提示词
-  aiModel?: string | null; // 使用的AI模型（如：Midjourney, DALL-E）
+  description: string | null; // 作品描述
+  category: string | null; // 作品分类（如：风景、人物、抽象等）
+  creationPrompt: string | null; // AI生成提示词
+  aiModel: string | null; // 使用的AI模型（如：Midjourney, DALL-E）
   viewCount: number; // 浏览次数
   likeCount: number; // 点赞数
   isFeatured: boolean; // 是否推荐（推荐作品显示在首页）
   sortOrder: number; // 排序权重（数字越小越靠前）
   status: ArtworkStatusLiteral; // 发布状态（draft=草稿, published=已发布）
-  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
-  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
+  createdAt: number | null; // 创建时间（毫秒级Unix时间戳）
+  updatedAt: number | null; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -47,17 +47,17 @@ export class AIArtwork
   declare id: number;
   declare title: string;
   declare slug: string;
-  declare description: string | null;
-  declare category: string | null;
-  declare creationPrompt: string | null;
-  declare aiModel: string | null;
+  declare description: string;
+  declare category: string;
+  declare creationPrompt: string;
+  declare aiModel: string;
   declare viewCount: number;
   declare likeCount: number;
   declare isFeatured: boolean;
   declare sortOrder: number;
   declare status: ArtworkStatusLiteral;
-  declare createdAt: number | null;
-  declare updatedAt: number | null;
+  declare createdAt: number;
+  declare updatedAt: number;
 
   // 关联
   declare static associations: {

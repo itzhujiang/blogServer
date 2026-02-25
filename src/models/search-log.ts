@@ -7,9 +7,9 @@ export interface SearchLogAttributes {
   id: number; // 日志ID
   query: string; // 搜索关键词
   resultsCount: number; // 搜索结果数量
-  ipAddress?: string | null; // 搜索用户IP地址（支持IPv4/IPv6）
-  userAgent?: string | null; // 用户代理（浏览器信息）
-  createdAt?: number | null; // 搜索时间（毫秒级Unix时间戳）
+  ipAddress: string | null; // 搜索用户IP地址（支持IPv4/IPv6）
+  userAgent: string | null; // 用户代理（浏览器信息）
+  createdAt: number; // 搜索时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -28,7 +28,7 @@ export class SearchLog
   declare resultsCount: number;
   declare ipAddress: string | null;
   declare userAgent: string | null;
-  declare createdAt: number | null;
+  declare createdAt: number;
 }
 
 // 初始化函数

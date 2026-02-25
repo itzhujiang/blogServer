@@ -12,7 +12,7 @@ export interface TempMediaAttributes {
   mimeType: string; // MIME类型
   expiresAt: number; // 过期时间（毫秒级Unix时间戳）
   isUsed: boolean; // 是否已被使用
-  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
+  createdAt: number; // 创建时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -34,7 +34,7 @@ export class TempMedia
   declare mimeType: string;
   declare expiresAt: number;
   declare isUsed: boolean;
-  declare createdAt: number | null;
+  declare createdAt: number;
 }
 
 // 临时文件有效期（1天）

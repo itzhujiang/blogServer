@@ -8,10 +8,10 @@ export interface BigFileChunkAttributes {
   fileIdentifier: string;   // 关联 big_file_records.identifier
   chunkNumber: number;      // 分片序号 (从 1 开始)
   chunkSize: number;        // 分片大小
-  chunkHash?: string | null; // 分片 MD5
+  chunkHash: string | null; // 分片 MD5
   chunkPath: string;        // 分片存储路径
   status: 'pending' | 'uploaded';
-  uploadedAt?: number | null;
+  uploadedAt: number | null;
 }
 
 /** 创建时可选字段 */

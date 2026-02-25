@@ -5,8 +5,8 @@ import { Optional } from 'sequelize';
  * 所有模型继承此类以获得通用字段类型定义
  */
 export interface BaseAttributes {
-  createdAt?: number; // 毫秒级 Unix 时间戳
-  updatedAt?: number; // 毫秒级 Unix 时间戳
+  createdAt: number; // 毫秒级 Unix 时间戳
+  updatedAt: number; // 毫秒级 Unix 时间戳
 }
 
 /**

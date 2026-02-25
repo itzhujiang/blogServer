@@ -8,16 +8,16 @@ import { CommentStatusLiteral } from './enums';
 export interface CommentAttributes {
   id: number; // 评论ID
   articleId: number; // 关联文章ID
-  parentId?: number | null; // 父评论ID（用于嵌套回复，null表示顶级评论）
+  parentId: number | null; // 父评论ID（用于嵌套回复，null表示顶级评论）
   authorName: string; // 访客姓名
-  authorEmail?: string | null; // 访客邮箱
-  authorUrl?: string | null; // 访客网站
-  authorIp?: string | null; // IP地址（用于防垃圾评论）
+  authorEmail: string | null; // 访客邮箱
+  authorUrl: string | null; // 访客网站
+  authorIp: string | null; // IP地址（用于防垃圾评论）
   content: string; // 评论内容
   status: CommentStatusLiteral; // 审核状态（pending=待审核, approved=已通过, spam=垃圾评论, trash=已删除）
   likeCount: number; // 点赞数
-  createdAt?: number | null; // 评论时间（毫秒级Unix时间戳）
-  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
+  createdAt: number; // 评论时间（毫秒级Unix时间戳）
+  updatedAt: number; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -49,8 +49,8 @@ export class Comment
   declare content: string;
   declare status: CommentStatusLiteral;
   declare likeCount: number;
-  declare createdAt: number | null;
-  declare updatedAt: number | null;
+  declare createdAt: number;
+  declare updatedAt: number;
 
   // 关联
   declare static associations: {

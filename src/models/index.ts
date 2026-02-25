@@ -25,6 +25,7 @@ export { AdminUser, initAdminUserModel } from './admin-user';
 export { TempMedia, initTempMediaModel, TEMP_FILE_EXPIRY } from './temp-media';
 export { BigFileRecord, initBigFileRecordModel } from './big-file-record';
 export { BigFileChunk, initBigFileChunkModel } from './big-file-chunk';
+export { AiChatUsers, initAiChatUsersModel } from './ai-chat-users';
 
 // 类型导出
 export type { CategoryAttributes, CategoryCreationAttributes } from './category';
@@ -45,6 +46,8 @@ export type { AdminUserAttributes, AdminUserCreationAttributes } from './admin-u
 export type { TempMediaAttributes, TempMediaCreationAttributes } from './temp-media';
 export type { BigFileRecordAttributes, BigFileRecordCreationAttributes } from './big-file-record';
 export type { BigFileChunkAttributes, BigFileChunkCreationAttributes } from './big-file-chunk';
+export type { AiChatUsersAttributes, AiChatUsersCreationAttributes } from './ai-chat-users';
+
 
 /**
  * 初始化所有模型
@@ -71,6 +74,7 @@ export async function initAllModels(force = false, alter = false) {
   const { initTempMediaModel } = await import('./temp-media');
   const { initBigFileRecordModel } = await import('./big-file-record');
   const { initBigFileChunkModel } = await import('./big-file-chunk');
+  const { initAiChatUsersModel } = await import('./ai-chat-users');
 
   // 初始化所有模型
   const Category = initCategoryModel(sequelize);
@@ -89,6 +93,7 @@ export async function initAllModels(force = false, alter = false) {
   const TempMedia = initTempMediaModel(sequelize);
   const BigFileRecord = initBigFileRecordModel(sequelize);
   const BigFileChunk = initBigFileChunkModel(sequelize);
+  const AiChatUsers = initAiChatUsersModel(sequelize);
 
   // 定义模型关联关系
 
@@ -277,6 +282,7 @@ export async function initAllModels(force = false, alter = false) {
     TempMedia,
     BigFileRecord,
     BigFileChunk,
+    AiChatUsers,
   };
 }
 

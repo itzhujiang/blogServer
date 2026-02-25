@@ -4,11 +4,11 @@ import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
  * 关于我页面媒体关联属性接口
  */
 export interface AboutPageMediaAttributes {
-  id?: number; // 关联ID（可选，创建时自动生成）
+  id: number; // 关联ID
   aboutPageId: number; // 关于我页面ID
   mediaId: number; // 媒体文件ID
   usageType: 'avatar' | 'content'; // 使用类型（avatar=头像, content=内容文件）
-  createdAt?: number | null; // 创建时间（毫秒级Unix时间戳）
+  createdAt: number; // 创建时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -22,11 +22,11 @@ export class AboutPageMedia
   extends Model<AboutPageMediaAttributes, AboutPageMediaCreationAttributes>
   implements AboutPageMediaAttributes
 {
-  declare id: number | undefined;
+  declare id: number;
   declare aboutPageId: number;
   declare mediaId: number;
   declare usageType: 'avatar' | 'content';
-  declare createdAt: number | null;
+  declare createdAt: number;
 }
 
 // 初始化函数

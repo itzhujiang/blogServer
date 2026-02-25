@@ -123,3 +123,15 @@ export enum AdminStatus {
   LOCKED = 'locked',
 }
 export type AdminStatusLiteral = 'active' | 'inactive' | 'locked';
+
+/**
+ * AI聊天用户状态枚举
+ * - active: 活跃（正常状态，可使用AI聊天功能）
+ * - blocked: 被封禁（账户被封禁，无法使用AI聊天功能）
+ */
+export enum AiChatUserStatus {
+  ACTIVE = 'active',
+  BLOCKED = 'blocked',
+}
+
+export type AiChatUserStatusLiteral = 'active' | 'blocked';

@@ -32,14 +32,14 @@ export interface AboutTimelineItem {
 export interface AboutPageAttributes {
   id: number; // 页面ID
   title: string; // 页面标题
-  nickname?: string | null; // 博主昵称（如：木心）
-  jobTitle?: string | null; // 职业标签（如：前端开发者 & UI设计师）
-  personalTags?: string[] | null; // 个人标签数组（如：["热爱学习的技术人", "AI创作探索者"]）
-  contactInfo?: Record<string, unknown> | null; // 联系方式，JSON格式（如：{email, github, wechat}）
-  socialLinks?: Record<string, unknown> | null; // 社交媒体链接，JSON格式（如：{twitter, dribbble, instagram}）
-  skills?: AboutSkill[] | null; // 技能专长，结构化JSON格式
-  timeline?: AboutTimelineItem[] | null; // 成长足迹，时间线数据
-  updatedAt?: number | null; // 更新时间（毫秒级Unix时间戳）
+  nickname: string | null; // 博主昵称（如：木心）
+  jobTitle: string | null; // 职业标签（如：前端开发者 & UI设计师）
+  personalTags: string[] | null; // 个人标签数组（如：["热爱学习的技术人", "AI创作探索者"]）
+  contactInfo: Record<string, unknown> | null; // 联系方式，JSON格式（如：{email, github, wechat}）
+  socialLinks: Record<string, unknown> | null; // 社交媒体链接，JSON格式（如：{twitter, dribbble, instagram}）
+  skills: AboutSkill[] | null; // 技能专长，结构化JSON格式
+  timeline: AboutTimelineItem[] | null; // 成长足迹，时间线数据
+  updatedAt: number; // 更新时间（毫秒级Unix时间戳）
 }
 
 /** 创建时可选字段 */
@@ -70,7 +70,7 @@ export class AboutPage
   declare socialLinks: Record<string, unknown> | null;
   declare skills: AboutSkill[] | null;
   declare timeline: AboutTimelineItem[] | null;
-  declare updatedAt: number | null;
+  declare updatedAt: number;
 
   // 关联
   declare static associations: {

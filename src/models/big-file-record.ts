@@ -12,12 +12,12 @@ export interface BigFileRecordAttributes {
   totalChunks: number;      // 总分片数
   mimeType: string;         // MIME 类型
   status: 'uploading' | 'completed' | 'failed';
-  fileHash?: string | null; // 文件 MD5（用于秒传）
-  storedName?: string | null; // 合并后的存储文件名
-  filePath?: string | null; // 合并后文件路径
-  fileUrl?: string | null;  // 合并后文件 URL
+  fileHash: string | null; // 文件 MD5（用于秒传）
+  storedName: string | null; // 合并后的存储文件名
+  filePath: string | null; // 合并后文件路径
+  fileUrl: string | null;  // 合并后文件 URL
   createdAt: number;
-  completedAt?: number | null;
+  completedAt: number | null;
 }
 
 /** 创建时可选字段 */
