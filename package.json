@@ -17,6 +17,8 @@
   "dependencies": {
     "@alicloud/credentials": "^2.4.4",
     "@alicloud/dypnsapi20170525": "^2.0.0",
+    "@alicloud/openapi-client": "^0.4.15",
+    "@alicloud/tea-util": "^1.4.11",
     "cls-hooked": "^4.2.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -34,6 +36,7 @@
     "path-to-regexp": "^8.3.0",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
+    "redis": "^5.11.0",
     "sequelize": "^6.37.7",
     "uuid": "^13.0.0",
     "validate.js": "^0.13.1"

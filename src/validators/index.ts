@@ -27,7 +27,8 @@ export {
   reviewCommentValidation,
   delCommentValidation,
 } from './blog/commentValidator';
-export { phoneCodeValidation } from './tools/codeValidator';
+export { aiLoginValidation } from './blog/aiUserValidator';
+export { sendPhoneCodeValidation } from './tools/codeValidator';
 
 // 验证错误处理中间件
 export const handleValidationErrors = (req: Request, res: Response, next: NextFunction): void => {

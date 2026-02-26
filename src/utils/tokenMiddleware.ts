@@ -15,6 +15,12 @@ const needToKenApi = [
   {
     path: '/uploads/temp/:name',
   },
+  {
+    path: '/api/tool/code/sendPhoneCode',
+  },
+  {
+    path: '/api/tool/code/verifyPhoneCode',
+  },
 ];
 
 export default (req: RequestMiddlewareType, res: ResponseType, next: NextFunction) => {
