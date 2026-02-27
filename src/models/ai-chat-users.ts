@@ -5,16 +5,16 @@ import { AiChatUserStatusLiteral } from './enums';
  * AI聊天用户属性接口
  */
 export interface AiChatUsersAttributes {
-    /** ID */
+  /** ID */
   id: number;
   /** 手机号 */
-  phone: string;  
+  phone: string;
   /** 用户状态（active/blocked） */
   status: AiChatUserStatusLiteral;
   /** 上次验证时间（毫秒级Unix时间戳） */
-  last_verified_at: number | null;
+  last_verified_at: number;
   /** 上次登录IP地址（支持IPv4和IPv6） */
-  last_login_ip: string | null;
+  last_login_ip: string;
   /** 创建时间（毫秒级Unix时间戳） */
   createdAt: number;
   /** 更新时间（毫秒级Unix时间戳） */
@@ -24,21 +24,19 @@ export interface AiChatUsersAttributes {
 /** 创建时可选字段 */
 export type AiChatUsersCreationAttributes = Optional<
   AiChatUsersAttributes,
-  | 'id'
-  | 'last_verified_at'
-  | 'last_login_ip'
-  | 'createdAt'
-  | 'updatedAt'
+  'id' | 'createdAt' | 'updatedAt'
 >;
 
-
 // 模型类
-export class AiChatUsers extends Model<AiChatUsersAttributes, AiChatUsersCreationAttributes> implements AiChatUsersAttributes {
+export class AiChatUsers
+  extends Model<AiChatUsersAttributes, AiChatUsersCreationAttributes>
+  implements AiChatUsersAttributes
+{
   declare id: number;
   declare phone: string;
   declare status: AiChatUserStatusLiteral;
-  declare last_verified_at: number | null;
-  declare last_login_ip: string | null;
+  declare last_verified_at: number;
+  declare last_login_ip: string;
   declare createdAt: number;
   declare updatedAt: number;
 }

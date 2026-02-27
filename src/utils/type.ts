@@ -7,6 +7,13 @@ export interface UserPayload {
   username: string;
   name: string;
 }
+
+// AI 用户 Token payload
+export interface AiUserPayload {
+  id: number;
+  phone: string;
+  type: 'ai-user'; // 用于区分 AI 用户和管理员
+}
  
 export type ResType = 'obj' | 'arr';
 
@@ -39,6 +46,7 @@ export type RequestBodyType<T = {}> = Request<
   ParameBodyType<T>
 > & {
   user?: UserPayload;
+  aiUser?: AiUserPayload; // AI 用户信息
 };
 
 // GET/DELETE 请求，类型在查询参数(第四个泛型)
@@ -49,6 +57,7 @@ export type RequestQueryType<T = {}> = Request<
   ParameBodyType<T>
 > & {
   user?: UserPayload;
+  aiUser?: AiUserPayload; // AI 用户信息
 };
 
 export type RequestType<T, R extends ReqType = 'get'> = R extends 'post' | 'put'
@@ -63,4 +72,5 @@ export type RequestMiddlewareType = Request<
   Record<string, unknown>
 > & {
   user?: UserPayload;
+  aiUser?: AiUserPayload; // AI 用户信息
 };

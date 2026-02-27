@@ -4,11 +4,12 @@ import path from 'node:path';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import cron from 'node-cron';
 import { initAllModels } from './models';
 import { cleanupExpiredTempFiles } from './services/blog/mediaFile';
 import apiLog from './utils/apiLoggerMid';
-import tokenMiddleware from './utils/tokenMiddleware';
+import authMiddleware from './utils/authMiddleware';
 import errorMiddleware from './utils/errorMiddleware';
 import userRouter from './api/user';
 import blogRouter from './api/blog';
@@ -41,6 +42,9 @@ startServer().then(() => {
       console.error('[定时任务] 清理过期临时文件失败:', error);
     }
   });
+
+  // 信任代理设置（用于正确获取客户端真实 IP）
+  app.set('trust proxy', true);
 
   // 安全中间件
   app.use(helmet());
@@ -79,7 +83,11 @@ startServer().then(() => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  app.use(tokenMiddleware);
+  // 解析 Cookie
+  app.use(cookieParser());
+
+  // 统一权限校验（管理员 token 或 AI token）
+  app.use(authMiddleware);
 
   // 用户接口
   app.use('/api/user', userRouter);
