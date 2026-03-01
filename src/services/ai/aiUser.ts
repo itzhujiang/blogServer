@@ -13,6 +13,12 @@ type AiLoginRequsetType = {
   ip: string;
 };
 
+/**
+ * ai用户登录接口
+ * @param params 
+ * @param response 
+ * @returns 
+ */
 const aiLogin = async (
   params: ParameBodyType<AiLoginRequsetType>,
   response: ResponseType<null>
@@ -24,7 +30,6 @@ const aiLogin = async (
       let user = await AiChatUsers.findOne({
         where: { phone },
       });
-      // 如果用户不存在，创建新用户
       if (!user) {
         user = await AiChatUsers.create({
           phone,
@@ -33,7 +38,6 @@ const aiLogin = async (
           last_login_ip: ip,
         });
       } else {
-        // 如果用户已存在，更新登录信息
         await user.update({
           last_verified_at: Date.now(),
           last_login_ip: ip,
@@ -41,10 +45,8 @@ const aiLogin = async (
         });
       }
 
-      // 生成 JWT Token
       const tokenPayload: AiUserPayload = {
         id: user.id!,
-        phone: user.phone,
         type: 'ai-user',
       };
       const token = issueJwt(3600 * 24 * 7, tokenPayload, 2); // 7天有效期

@@ -49,7 +49,7 @@ export default (req: RequestMiddlewareType, res: ResponseType, next: NextFunctio
     return;
   }
 
-  // 先尝试验证管理员 token（管理员可以访问所有接口）
+  // 验证管理员 token（管理员可以访问所有接口）
   const adminResult = verifyJwt(req);
   if (adminResult) {
     req.user = adminResult as UserPayload;

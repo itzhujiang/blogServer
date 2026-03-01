@@ -11,7 +11,6 @@ export interface UserPayload {
 // AI 用户 Token payload
 export interface AiUserPayload {
   id: number;
-  phone: string;
   type: 'ai-user'; // 用于区分 AI 用户和管理员
 }
  

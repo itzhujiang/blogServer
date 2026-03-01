@@ -1,7 +1,7 @@
 import express from 'express';
 import { aiLoginValidation, handleValidationErrors } from '../../validators';
 import { asyncHandler } from '../../utils/getSendResult';
-import { aiLogin, AiLoginRequsetType } from '../../services/blog/aiUser';
+import { aiLogin, AiLoginRequsetType } from '../../services/ai/aiUser';
 
 const router = express.Router();
 

@@ -14,6 +14,7 @@ import errorMiddleware from './utils/errorMiddleware';
 import userRouter from './api/user';
 import blogRouter from './api/blog';
 import toolsRouter from './api/tools';
+import aiRouter from './api/ai';
 
 dotenv.config();
 
@@ -94,6 +95,9 @@ startServer().then(() => {
 
   // 博客接口（包含前后台）
   app.use('/api/blog', blogRouter);
+
+  // AI接口
+  app.use('/api/ai', aiRouter);
 
   // 工具接口
   app.use('/api/tool', toolsRouter);
