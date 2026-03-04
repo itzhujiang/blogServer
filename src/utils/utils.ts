@@ -3,6 +3,7 @@ import * as $OpenApi from '@alicloud/openapi-client';
 import Dypnsapi20170525, * as $Dypnsapi20170525 from '@alicloud/dypnsapi20170525';
 import * as $Util from '@alicloud/tea-util';
 import { defaultLogger } from './logger';
+import { ResponseType } from './type';
 
 // 阿里云短信服务的SDK
 class PhoneCode {
@@ -98,11 +99,22 @@ class PhoneCode {
 
 export const phoneCode = new PhoneCode();
 
-
 /**
  * 获取当前时间戳
  */
 export const getTimestamp = () => {
-  const timestamp = Date.now()
-  return timestamp
-}
+  const timestamp = Date.now();
+  return timestamp;
+};
+
+/**
+ * 设置sse响应头
+ * @param res
+ */
+export const setupSSE = (res: ResponseType) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+};

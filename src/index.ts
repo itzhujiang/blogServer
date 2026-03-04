@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import helmet from 'helmet';
@@ -6,6 +6,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import cron from 'node-cron';
+import compression from 'compression';
 import { initAllModels } from './models';
 import { cleanupExpiredTempFiles } from './services/blog/mediaFile';
 import apiLog from './utils/apiLoggerMid';
@@ -90,6 +91,19 @@ startServer().then(() => {
 
   // 统一权限校验（管理员 token 或 AI token）
   app.use(authMiddleware);
+  // 压缩（SSE 请求跳过压缩）
+  app.use(
+    compression({
+      filter: (req: Request, res: Response) => {
+        // 如果是 SSE 请求，不压缩
+        if (req.headers.accept === 'text/event-stream') {
+          return false;
+        }
+        // 默认压缩
+        return compression.filter(req, res);
+      },
+    })
+  );
 
   // 用户接口
   app.use('/api/user', userRouter);
@@ -102,6 +116,9 @@ startServer().then(() => {
 
   // 工具接口
   app.use('/api/tool', toolsRouter);
+
+  // ai接口（博客使用的ai相关接口）
+  app.use('/api/ai', aiRouter);
 
   // 处理错误
   app.use(errorMiddleware);
