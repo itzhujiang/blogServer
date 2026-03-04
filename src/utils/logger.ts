@@ -2,7 +2,7 @@ import log4js from 'log4js';
 import path from 'node:path';
 import fs from 'node:fs';
 
-type PathSeg = 'sql' | 'api' | 'default';
+type PathSeg = 'sql' | 'api' | 'default' | 'redis';
 
 const getCommonAppenders = (pathSeg: PathSeg) => {
   return {
@@ -19,7 +19,7 @@ const getCommonAppenders = (pathSeg: PathSeg) => {
 };
 
 // 确保日志目录存在
-const logDirs = ['sql', 'api', 'default'].map(dir =>
+const logDirs = ['sql', 'api', 'default', 'redis'].map(dir =>
   path.resolve(__dirname, '../../', 'logs', dir)
 );
 logDirs.forEach(dir => {
@@ -33,6 +33,7 @@ log4js.configure({
     sql: getCommonAppenders('sql'),
     default: getCommonAppenders('default'),
     api: getCommonAppenders('api'),
+    redis: getCommonAppenders('redis'),
   },
   categories: {
     sql: {
@@ -47,6 +48,10 @@ log4js.configure({
       appenders: ['api'],
       level: 'all',
     },
+    redis: {
+      appenders: ['redis'],
+      level: 'all',
+    },
   },
 });
 
@@ -57,3 +62,4 @@ process.on('exit', () => {
 export const sqlLogger = log4js.getLogger('sql');
 export const defaultLogger = log4js.getLogger();
 export const apiLogger = log4js.getLogger('api');
+export const redisLogger = log4js.getLogger('redis');

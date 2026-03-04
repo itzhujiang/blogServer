@@ -73,14 +73,16 @@ export function initAiChatUsersModel(sequelize: Sequelize): typeof AiChatUsers {
         allowNull: true,
         comment: '上次登录IP地址（支持IPv4和IPv6）',
       },
-       createdAt: {
+      createdAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '创建时间（毫秒级Unix时间戳）',
       },
       updatedAt: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '更新时间（毫秒级Unix时间戳）',
       },
     },
@@ -97,7 +99,7 @@ export function initAiChatUsersModel(sequelize: Sequelize): typeof AiChatUsers {
         },
         beforeUpdate: (instance: AiChatUsers) => {
           instance.updatedAt = Date.now();
-        }
+        },
       },
       indexes: [
         {
@@ -113,7 +115,7 @@ export function initAiChatUsersModel(sequelize: Sequelize): typeof AiChatUsers {
       ],
       comment: 'AI聊天用户表',
     }
-  )
+  );
 
     return AiChatUsers;
 }

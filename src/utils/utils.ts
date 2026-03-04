@@ -98,3 +98,11 @@ class PhoneCode {
 
 export const phoneCode = new PhoneCode();
 
+
+/**
+ * 获取当前时间戳
+ */
+export const getTimestamp = () => {
+  const timestamp = Date.now()
+  return timestamp
+}

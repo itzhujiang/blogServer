@@ -45,7 +45,8 @@ startServer().then(() => {
   });
 
   // 信任代理设置（用于正确获取客户端真实 IP）
-  app.set('trust proxy', true);
+  // 设置为 1 表示信任第一层代理（如 Nginx、Cloudflare 等）
+  app.set('trust proxy', 1);
 
   // 安全中间件
   app.use(helmet());

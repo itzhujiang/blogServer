@@ -17,10 +17,10 @@ const noAuthRequiredApi = [
     path: '/uploads/temp/:name',
   },
   {
-    path: '/api/tool/:path*',
+    path: '/api/tool/*path',
   },
   {
-    path: '/api/blog/ai-user/aiLogin',
+    path: '/api/ai/ai-user/aiLogin',
   },
 ];
 
@@ -43,7 +43,6 @@ export default (req: RequestMiddlewareType, res: ResponseType, next: NextFunctio
     const reg = pathToRegexp(api.path);
     return reg.regexp.test(req.path);
   });
-
   if (noAuthApis.length !== 0) {
     next();
     return;

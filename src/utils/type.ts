@@ -36,6 +36,7 @@ export type ParameBodyType<T = {}> = {
   size?: number;
 } & T & {
     user?: UserPayload;
+    aiUser?: AiUserPayload; // AI 用户信息
   };
 
 // POST/PUT/PATCH 请求，类型在请求体(第三个泛型)

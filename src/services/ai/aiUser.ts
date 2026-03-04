@@ -71,4 +71,23 @@ const aiLogin = async (
   }
 };
 
-export { aiLogin, AiLoginRequsetType };
+type UserInfoResponseType = {
+  /** id */
+  id: number;
+  /** 手机号 */
+  phone: string;
+};
+
+const getUserInfo = async (
+  params: ParameBodyType<{}>
+): Promise<HandlerResult<UserInfoResponseType>> => {
+  const { aiUser } = params;
+  if (!aiUser) {
+    return {
+      err: '用户未登录',
+      data: null,
+    };
+  }
+};
+
+export { aiLogin, getUserInfo, AiLoginRequsetType, UserInfoResponseType };
