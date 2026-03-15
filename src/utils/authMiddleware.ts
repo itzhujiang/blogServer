@@ -32,6 +32,21 @@ const aiAuthOnlyApi = [
   {
     path: '/api/blog/ai-user/profile',
   },
+  {
+    path: '/api/ai/ai-user/getUserInfo',
+  },
+  {
+    path: '/api/ai/ai-chat/chat',
+  },
+  {
+    path: '/api/ai/ai-chat/sendMessage',
+  },
+  {
+    path: '/api/ai/ai-chat/getSessionList',
+  },
+  {
+    path: '/api/ai/ai-chat/getMessages',
+  },
 ];
 
 /**

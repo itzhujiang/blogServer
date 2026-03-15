@@ -1,7 +1,12 @@
 import express from 'express';
 import { aiLoginValidation, handleValidationErrors } from '../../validators';
 import { asyncHandler } from '../../utils/getSendResult';
-import { aiLogin, AiLoginRequsetType } from '../../services/ai/aiUser';
+import {
+  aiLogin,
+  AiLoginRequsetType,
+  UserInfoResponseType,
+  getUserInfo,
+} from '../../services/ai/aiUser';
 
 const router = express.Router();
 
@@ -24,6 +29,18 @@ router.post(
     );
 
     return result;
+  })
+);
+
+// 获取用户信息
+router.get(
+  '/getUserInfo',
+  [],
+  asyncHandler<null, UserInfoResponseType>(async req => {
+    return await getUserInfo({
+      ...req.params,
+      aiUser: req.aiUser,
+    });
   })
 );
 

@@ -8,6 +8,6 @@ const router = express.Router();
 router.use('/ai-user', aiUserRouter);
 
 // ai对话相关 - /api/ai/aiChat/*
-router.use('/aiChat', aiChat);
+router.use('/ai-chat', aiChat);
 
 export default router;

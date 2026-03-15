@@ -135,3 +135,21 @@ export enum AiChatUserStatus {
 }
 
 export type AiChatUserStatusLiteral = 'active' | 'blocked';
+
+/**
+ * ai聊天消息角色
+ */
+export enum AiChatMessageRole {
+  USER = 'user',
+  ASSISTANT = 'assistant',
+  SYSTEM = 'system',
+}
+
+export type AiChatMessageRoleLiteral = 'user' | 'assistant' | 'system'
+
+export enum AiChatMessageType {
+  TEXT = 'text',
+  SYSTEM = 'system',
+}
+
+export type AiChatMessageTypeLiteral = 'text' | 'system'

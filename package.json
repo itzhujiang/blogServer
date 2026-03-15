@@ -19,6 +19,7 @@
     "@alicloud/dypnsapi20170525": "^2.0.0",
     "@alicloud/openapi-client": "^0.4.15",
     "@alicloud/tea-util": "^1.4.11",
+    "better-sse": "^0.16.1",
     "cls-hooked": "^4.2.2",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",

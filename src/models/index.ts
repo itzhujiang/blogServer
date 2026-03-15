@@ -26,6 +26,8 @@ export { TempMedia, initTempMediaModel, TEMP_FILE_EXPIRY } from './temp-media';
 export { BigFileRecord, initBigFileRecordModel } from './big-file-record';
 export { BigFileChunk, initBigFileChunkModel } from './big-file-chunk';
 export { AiChatUsers, initAiChatUsersModel } from './ai-chat-users';
+export { AiChatSessions, initAiChatSessionsModel } from './ai-chat-sessions';
+export { AiChatMessages, initAiChatMessagesModel } from './ai-chat-messages';
 
 // 类型导出
 export type { CategoryAttributes, CategoryCreationAttributes } from './category';
@@ -47,6 +49,8 @@ export type { TempMediaAttributes, TempMediaCreationAttributes } from './temp-me
 export type { BigFileRecordAttributes, BigFileRecordCreationAttributes } from './big-file-record';
 export type { BigFileChunkAttributes, BigFileChunkCreationAttributes } from './big-file-chunk';
 export type { AiChatUsersAttributes, AiChatUsersCreationAttributes } from './ai-chat-users';
+export type { AiChatSessionsAttributes, AiChatSessionsCreationAttributes } from './ai-chat-sessions';
+export type { AiChatMessagesAttributes, AiChatMessagesCreationAttributes } from './ai-chat-messages';
 
 
 /**
@@ -75,6 +79,8 @@ export async function initAllModels(force = false, alter = false) {
   const { initBigFileRecordModel } = await import('./big-file-record');
   const { initBigFileChunkModel } = await import('./big-file-chunk');
   const { initAiChatUsersModel } = await import('./ai-chat-users');
+  const { initAiChatSessionsModel } = await import('./ai-chat-sessions');
+  const { initAiChatMessagesModel } = await import('./ai-chat-messages');
 
   // 初始化所有模型
   const Category = initCategoryModel(sequelize);
@@ -94,6 +100,8 @@ export async function initAllModels(force = false, alter = false) {
   const BigFileRecord = initBigFileRecordModel(sequelize);
   const BigFileChunk = initBigFileChunkModel(sequelize);
   const AiChatUsers = initAiChatUsersModel(sequelize);
+  const AiChatSessions = initAiChatSessionsModel(sequelize);
+  const AiChatMessages = initAiChatMessagesModel(sequelize);
 
   // 定义模型关联关系
 
@@ -231,6 +239,30 @@ export async function initAllModels(force = false, alter = false) {
     as: 'media',
   });
 
+  // === AI聊天系统关联 ===
+
+  // AiChatUsers <-> AiChatSessions
+  AiChatUsers.hasMany(AiChatSessions, {
+    foreignKey: 'user_id',
+    as: 'sessions',
+    onDelete: 'RESTRICT',
+  });
+  AiChatSessions.belongsTo(AiChatUsers, {
+    foreignKey: 'user_id',
+    as: 'user',
+  });
+
+  // AiChatSessions <-> AiChatMessages
+  AiChatSessions.hasMany(AiChatMessages, {
+    foreignKey: 'session_id',
+    as: 'messages',
+    onDelete: 'RESTRICT',
+  });
+  AiChatMessages.belongsTo(AiChatSessions, {
+    foreignKey: 'session_id',
+    as: 'session',
+  });
+
   // === 关于我页面关联 ===
 
   // AboutPage <-> AboutPageMedia
@@ -283,6 +315,8 @@ export async function initAllModels(force = false, alter = false) {
     BigFileRecord,
     BigFileChunk,
     AiChatUsers,
+    AiChatSessions,
+    AiChatMessages,
   };
 }
 

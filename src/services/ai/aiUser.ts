@@ -1,6 +1,6 @@
 import { HandlerResult } from '../../utils/getSendResult';
 import { ParameBodyType, AiUserPayload, ResponseType } from '../../utils/type';
-import { phoneCode as phoneCodeService } from '../../utils/utils';
+import { encryptionPhone, phoneCode as phoneCodeService } from '../../utils/utils';
 import { AiChatUsers } from '../../models/index';
 import { issueJwt } from '../../utils/jwt';
 
@@ -15,9 +15,9 @@ type AiLoginRequsetType = {
 
 /**
  * ai用户登录接口
- * @param params 
- * @param response 
- * @returns 
+ * @param params
+ * @param response
+ * @returns
  */
 const aiLogin = async (
   params: ParameBodyType<AiLoginRequsetType>,
@@ -79,15 +79,34 @@ type UserInfoResponseType = {
 };
 
 const getUserInfo = async (
-  params: ParameBodyType<{}>
+  params: ParameBodyType
 ): Promise<HandlerResult<UserInfoResponseType>> => {
   const { aiUser } = params;
+  console.log('aiUser', aiUser);
+
   if (!aiUser) {
     return {
       err: '用户未登录',
       data: null,
     };
   }
+  const res = await AiChatUsers.findByPk(aiUser.id);
+  if (!res) {
+    return {
+      err: '用户未登录',
+      data: null,
+    };
+  }
+
+  return {
+    data: {
+      data: {
+        id: res.id,
+        phone: encryptionPhone(res.phone),
+      },
+    },
+    msg: '成功',
+  };
 };
 
 export { aiLogin, getUserInfo, AiLoginRequsetType, UserInfoResponseType };

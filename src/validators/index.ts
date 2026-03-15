@@ -29,6 +29,11 @@ export {
 } from './blog/commentValidator';
 export { aiLoginValidation } from './blog/aiUserValidator';
 export { sendPhoneCodeValidation } from './tools/codeValidator';
+export {
+  sendMessageValidation,
+  messagesValidation,
+  sessionListValidation,
+} from './ai/aiChatValidator';
 
 // 验证错误处理中间件
 export const handleValidationErrors = (req: Request, res: Response, next: NextFunction): void => {
