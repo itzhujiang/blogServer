@@ -13,7 +13,7 @@ export interface AiUserPayload {
   id: number;
   type: 'ai-user'; // 用于区分 AI 用户和管理员
 }
- 
+
 export type ResType = 'obj' | 'arr';
 
 export type ResBodyType<T = never> = {
@@ -74,3 +74,5 @@ export type RequestMiddlewareType = Request<
   user?: UserPayload;
   aiUser?: AiUserPayload; // AI 用户信息
 };
+
+export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;

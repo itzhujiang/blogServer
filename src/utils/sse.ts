@@ -1,10 +1,11 @@
 import { Session } from "better-sse"
+import { Optional } from './type';
 
-type EventName = 'message' | 'system'
+type EventName = 'message' | 'system';
 
-export type MessageType = 'chunk' | 'done' | 'typing' | 'connected'
+export type MessageType = 'chunk' | 'done' | 'typing' | 'overall';
 
-export type MessageRole = 'assistant' | 'system'
+export type MessageRole = 'assistant' | 'system';
 
 export interface ChatMessage {
   /** 服务端id */
@@ -17,17 +18,22 @@ export interface ChatMessage {
   createdAt: number;
   /** 会话id */
   sessionId: number;
+  /** 消息类型 */
+  msgType: MessageType;
 }
 
-
+export type ConnectionMessage = Optional<
+  ChatMessage,
+  'content' | 'createdAt' | 'sessionId' | 'serverId'
+>;
 
 class SSEConnectionManager {
-  private connections: Map<string, Session> = new Map()
+  private connections: Map<string, Session> = new Map();
 
   /**
    * 添加链接
    * @param userId 用户id
-   * @param session 会话 
+   * @param session 会话
    */
   addConnection(userId: string, session: Session) {
     this.connections.set(userId, session);
@@ -35,52 +41,56 @@ class SSEConnectionManager {
 
   /**
    * 移除链接
-   * @param userId 用户id 
+   * @param userId 用户id
    */
   removeConnection(userId: string) {
-    this.connections.delete(userId)
-  };
+    this.connections.delete(userId);
+  }
   /**
    * 获取链接
-   * @param userId 用户id 
+   * @param userId 用户id
    */
   getConnection(userId: string): Session | undefined {
-    return this.connections.get(userId)
+    return this.connections.get(userId);
   }
 
   /**
    * 检查链接是否存在
    * @param userId 用户id
-   * @returns 
+   * @returns
    */
   hasConnection(userId: string): boolean {
-    const session = this.connections.get(userId)
-    return session !== undefined && session.isConnected
+    const session = this.connections.get(userId);
+    return session !== undefined && session.isConnected;
   }
   /**
    * 向指定用户推送信息
    * @param userId 用户id
    * @param data 消息
-   * @param eventName 事件名称 
+   * @param eventName 事件名称
    */
-  pushToUser(userId: string, data: ChatMessage, eventName: EventName = "message") {
-    const session = this.connections.get(userId)
+  pushToUser<T extends ChatMessage | ConnectionMessage = ChatMessage>(
+    userId: string,
+    data: T,
+    eventName: EventName = 'message'
+  ) {
+    const session = this.connections.get(userId);
     if (!session || !session.isConnected) {
-      return false
+      return false;
     }
-     try {
-      session.push(data, eventName)
-      return true
+    try {
+      session.push(data, eventName);
+      return true;
     } catch (error) {
-      throw error
+      throw error;
     }
   }
   /**
    * 获取在线用户数
-   * @returns 
+   * @returns
    */
   getOnlineCount(): number {
-    return this.connections.size
+    return this.connections.size;
   }
 }
 
