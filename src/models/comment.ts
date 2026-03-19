@@ -11,6 +11,7 @@ export interface CommentAttributes {
   parentId: number | null; // 父评论ID（用于嵌套回复，null表示顶级评论）
   authorName: string; // 访客姓名
   authorEmail: string | null; // 访客邮箱
+  authorPhone: string | null; // 访客手机号
   authorUrl: string | null; // 访客网站
   authorIp: string | null; // IP地址（用于防垃圾评论）
   content: string; // 评论内容
@@ -32,6 +33,7 @@ export type CommentCreationAttributes = Optional<
   | 'likeCount'
   | 'createdAt'
   | 'updatedAt'
+  | 'authorPhone'
 >;
 
 // 模型类
@@ -51,7 +53,7 @@ export class Comment
   declare likeCount: number;
   declare createdAt: number;
   declare updatedAt: number;
-
+  declare authorPhone: string | null;
   // 关联
   declare static associations: {
     article: Association<Comment, Article>;
@@ -89,6 +91,11 @@ export function initCommentModel(sequelize: Sequelize): typeof Comment {
         type: DataTypes.STRING(255),
         allowNull: true,
         comment: '访客邮箱',
+      },
+      authorPhone: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        comment: '访客手机号',
       },
       authorUrl: {
         type: DataTypes.STRING(255),
