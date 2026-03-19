@@ -14,7 +14,7 @@ const noAuthRequiredApi = [
     path: '/api/user/admin/login',
   },
   {
-    path: '/uploads/temp/:name',
+    path: '/uploads/:name',
   },
   {
     path: '/api/tool/*path',
