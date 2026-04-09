@@ -8,7 +8,7 @@ export interface ArticleMediaAttributes {
   id: number; // 关联ID
   articleId: number; // 文章ID
   mediaId: number; // 媒体文件ID
-  usageType: ArticleMediaUsageLiteral; // 使用类型（thumbnail=缩略图, attachment=附件图, content=文章内容）
+  usageType: ArticleMediaUsageLiteral; // 使用类型（thumbnail=缩略图, attachment=附件图）
   sortOrder: number; // 排序权重
   createdAt: number; // 创建时间（毫秒级Unix时间戳）
 }
@@ -56,7 +56,7 @@ export function initArticleMediaModel(sequelize: Sequelize): typeof ArticleMedia
         type: DataTypes.ENUM('thumbnail', 'attachment', 'content'),
         allowNull: false,
         defaultValue: 'attachment',
-        comment: '使用类型 (thumbnail=缩略图, attachment=附件图, content=文章内容)',
+        comment: '使用类型 (thumbnail=缩略图, attachment=附件图)',
       },
       sortOrder: {
         type: DataTypes.INTEGER,
@@ -86,6 +86,10 @@ export function initArticleMediaModel(sequelize: Sequelize): typeof ArticleMedia
         },
       },
       indexes: [
+        {
+          unique: true,
+          fields: ['article_id', 'media_id', 'usage_type'],
+        },
         {
           fields: ['article_id'],
         },

@@ -739,7 +739,10 @@ const getBigFileStatus = async (
 /**
  * 清理过期的大文件上传记录
  */
-const cleanupExpiredBigFiles = async (): Promise<{ deletedRecords: number; deletedChunks: number }> => {
+const cleanupExpiredBigFiles = async (): Promise<{
+  deletedRecords: number;
+  deletedChunks: number;
+}> => {
   const expiryTime = 24 * 60 * 60 * 1000; // 24小时
   const cutoffTime = Date.now() - expiryTime;
 

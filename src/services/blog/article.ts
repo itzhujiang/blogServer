@@ -14,8 +14,87 @@ import {
 } from '../../models/index';
 import { ConfirmResultType, confirmTempMedia } from './mediaFile';
 import { Op, WhereOptions, Order, Includeable } from 'sequelize';
-import fs from 'node:fs';
-import path from 'node:path';
+
+const getArticleRevalidationPaths = (slugs: string[]) => {
+  const slugPaths = slugs.filter(slug => !!slug).map(slug => `/articles/${slug}`);
+
+  return Array.from(new Set(['/', '/articles', ...slugPaths]));
+};
+
+const triggerArticleRevalidation = async (slugs: string[]) => {
+  const secret = process.env.REVALIDATION_SECRET;
+  const blogUrl = process.env.BLOG_URL;
+
+  if (!secret || !blogUrl) {
+    console.warn('文章刷新跳过：缺少 BLOG_URL 或 REVALIDATION_SECRET 配置');
+    return;
+  }
+
+  const revalidateUrl = `${blogUrl.replace(/\/$/, '')}/api/revalidate`;
+  const paths = getArticleRevalidationPaths(slugs);
+
+  if (paths.length === 0) {
+    return;
+  }
+
+  const response = await fetch(revalidateUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      secret,
+      paths,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`revalidate request failed: ${response.status} ${errorText}`);
+  }
+};
+
+const resolveArticleContent = (article: Pick<ArticleAttributes, 'content'>) =>
+  article.content || '';
+
+const buildTempToPermanentMapping = (
+  attachmentList:
+    | AddArticleRequsetType['attachmentList']
+    | UpdateArticleRequsetType['attachmentList'],
+  data: ConfirmResultType[]
+) => {
+  const tempToPermanentMapping = new Map<string, string>();
+
+  if (attachmentList) {
+    attachmentList.forEach(it => {
+      const fileInfo = data.find(item => item.fileCode === it.code);
+      if (fileInfo) {
+        tempToPermanentMapping.set(it.source, fileInfo.fileUrl);
+      }
+    });
+  }
+
+  return tempToPermanentMapping;
+};
+
+const persistProcessedArticleContent = async (
+  article: Article,
+  rawContent: string,
+  attachmentList:
+    | AddArticleRequsetType['attachmentList']
+    | UpdateArticleRequsetType['attachmentList'],
+  data: ConfirmResultType[]
+) => {
+  const tempToPermanentMapping = buildTempToPermanentMapping(attachmentList, data);
+  const processedContent = processArticleContent(rawContent, tempToPermanentMapping);
+  const readingTime = Math.ceil(processedContent.length / 500);
+
+  await article.update({ content: processedContent, readingTime });
+};
+
+const getUniqueCodes = (codes: Array<string | undefined>) =>
+  Array.from(new Set(codes.filter((code): code is string => !!code)));
+
 
 /**
  * 文章列表请求类型
@@ -44,14 +123,14 @@ type ArticleItemType = Pick<
   | 'title'
   | 'slug'
   | 'excerpt'
-  | 'thumbnailUrl'
+  | 'content'
   | 'authorName'
   | 'readingTime'
   | 'viewCount'
   | 'status'
   | 'publishedAt'
 > & {
-  fileUrl: string; // 文章内容文件URL
+  thumbnailUrl: string; // 列表缩略图URL
   attachmentUrlArr: string[]; // 附件url数组
   categories: Pick<CategoryAttributes, 'id' | 'name' | 'slug'>[];
 };
@@ -160,7 +239,7 @@ const getArticleList = async (
       'title',
       'slug',
       'excerpt',
-      'thumbnailUrl',
+      'content',
       'authorName',
       'readingTime',
       'viewCount',
@@ -177,10 +256,10 @@ const getArticleList = async (
     // 获取关联的媒体文件数据
     const articleMedias = article.get('articleMedias') as ArticleMedia[] | undefined;
 
-    // 提取文章内容文件 URL（usageType = 'content'）
-    const contentMedia = articleMedias?.find(media => media.usageType === 'content');
-    const contentMediaFile = contentMedia?.get('media') as MediaFile | undefined;
-    const fileUrl = contentMediaFile?.fileUrl || ''; // 如果没有关联媒体文件，返回空字符串
+    // 提取文章缩略图 URL（usageType = 'thumbnail'）
+    const thumbnailMedia = articleMedias?.find(media => media.usageType === 'thumbnail');
+    const thumbnailMediaFile = thumbnailMedia?.get('media') as MediaFile | undefined;
+    const thumbnailUrl = thumbnailMediaFile?.fileUrl || '';
 
     // 提取附件文件 URL 数组（usageType = 'attachment'）
     const attachmentMedias = articleMedias?.filter(media => media.usageType === 'attachment') || [];
@@ -196,8 +275,8 @@ const getArticleList = async (
       title: article.title,
       slug: article.slug,
       excerpt: article.excerpt,
-      thumbnailUrl: article.thumbnailUrl,
-      fileUrl: fileUrl,
+      thumbnailUrl,
+      content: resolveArticleContent(article),
       attachmentUrlArr: attachmentUrlArr,
       authorName: article.authorName,
       readingTime: article.readingTime,
@@ -235,8 +314,8 @@ type AddArticleRequsetType = {
   thumbnailCode?: string;
   /** 文章摘要 */
   excerpt: string;
-  /** 文章内容文件Code */
-  articleCode: string;
+  /** 文章内容 */
+  content: string;
   /** 附件列表 */
   attachmentList?: {
     code: string;
@@ -281,14 +360,10 @@ const addArticle = async (
         err: '所选分类不存在，请更换后重新提交',
       };
     }
-    const codeArr = [];
-    if (param.thumbnailCode) {
-      codeArr.push(param.thumbnailCode);
-    }
-    codeArr.push(param.articleCode);
-    if (param.attachmentList && param.attachmentList.length > 0) {
-      codeArr.push(...param.attachmentList.map(item => item.code));
-    }
+    const codeArr = getUniqueCodes([
+      param.thumbnailCode,
+      ...(param.attachmentList?.map(item => item.code) || []),
+    ]);
     // 使用事务确保数据一致性
     const transaction = await sequelize.transaction();
     const confirmResult = await confirmTempMedia(codeArr, transaction);
@@ -310,15 +385,6 @@ const addArticle = async (
         err: '确认临时媒体失败',
       };
     }
-    // 获取 主文件 url
-    const articleFileUrl = confirmResult.data.data.find(
-      item => item.fileCode === param.articleCode
-    )?.fileUrl;
-    if (!articleFileUrl) {
-      return {
-        err: '文章内容文件确认失败',
-      };
-    }
 
     let article: Article;
     try {
@@ -327,12 +393,11 @@ const addArticle = async (
         {
           title: param.title,
           slug: param.slug,
-          filePath: articleFileUrl,
+          content: '',
           excerpt: param.excerpt,
-          thumbnailUrl: confirmResult.data.data.find(item => item.fileCode === param.thumbnailCode)
-            ?.fileUrl,
           authorName: param.user?.name || '翎羽',
           status: 'published',
+          readingTime: 0,
         },
         { transaction }
       );
@@ -343,12 +408,7 @@ const addArticle = async (
           {
             articleId: article.id,
             mediaId: item.mediaId,
-            usageType:
-              item.fileCode === param.articleCode
-                ? 'content'
-                : item.fileCode === param.thumbnailCode
-                  ? 'thumbnail'
-                  : 'attachment',
+            usageType: item.fileCode === param.thumbnailCode ? 'thumbnail' : 'attachment',
             sortOrder: 0,
           },
           { transaction }
@@ -379,35 +439,22 @@ const addArticle = async (
 
     // 事务提交后，移动文件并处理文章内容（独立于事务）
     try {
-      console.log('confirmResult.data', confirmResult.data, articleFileUrl);
       if (confirmResult.data && Array.isArray(confirmResult.data.data)) {
-        await Promise.all(confirmResult.data.data.map(item => item.moveFiles()));
+        const data = confirmResult.data.data;
+        await Promise.all(data.map(item => item.moveFiles()));
 
-        // 处理文章内容，替换临时 src 为永久路径
-        if (articleFileUrl) {
-          const articleMDFile = path.join(process.cwd(), articleFileUrl);
-          const articleMDContent = fs.readFileSync(articleMDFile, 'utf-8');
-          const data = confirmResult.data!.data;
-          const tempToPermanentMapping = new Map<string, string>();
-          if (param.attachmentList) {
-            param.attachmentList.forEach(it => {
-              const fileInfo = data.find(item => item.fileCode === it.code);
-              if (fileInfo) {
-                tempToPermanentMapping.set(it.source, fileInfo.fileUrl);
-              }
-            });
-          }
-          const processedContent = processArticleContent(articleMDContent, tempToPermanentMapping);
-          fs.writeFileSync(articleMDFile, processedContent, 'utf-8');
-
-          // 计算阅读时间并更新文章
-          const readingTime = Math.ceil(processedContent.length / 500);
-          await article.update({ readingTime });
-        }
+        // 处理文章内容，替换临时 src 为永久路径并写入数据库
+        await persistProcessedArticleContent(article, param.content, param.attachmentList, data);
       }
     } catch (postCommitError) {
       // 事务已提交，这里只记录错误，不影响返回结果
       console.error('文件处理失败:', postCommitError);
+    }
+
+    try {
+      await triggerArticleRevalidation([param.slug]);
+    } catch (revalidateError) {
+      console.error('文章发布后刷新前台页面失败:', revalidateError);
     }
 
     return {
@@ -419,9 +466,11 @@ const addArticle = async (
   }
 };
 
-type UpdateArticleRequsetType = AddArticleRequsetType & {
+type UpdateArticleRequsetType = Omit<AddArticleRequsetType, 'content'> & {
   /** 文章ID */
   id: number;
+  /** 文章内容 */
+  content?: string;
   /** 是否更新文章 */
   isUpdateArticle?: boolean;
   /** 是否更新缩略图 */
@@ -463,99 +512,60 @@ const updateArticle = async (
     }
 
     // 3. 构建需要确认的文件 code 数组
-    const codeArr: string[] = [];
-    if (param.isUpdateThumbnail && param.thumbnailCode) {
-      codeArr.push(param.thumbnailCode);
-    }
-    if (param.isUpdateArticle) {
-      codeArr.push(param.articleCode);
-      if (param.attachmentList && param.attachmentList.length > 0) {
-        codeArr.push(...param.attachmentList.map(item => item.code));
-      }
-    }
+    const codeArr = getUniqueCodes([
+      param.isUpdateThumbnail ? param.thumbnailCode : undefined,
+      ...(param.isUpdateArticle ? param.attachmentList?.map(item => item.code) || [] : []),
+    ]);
     const transaction = await sequelize.transaction();
-    await ArticleCategory.destroy({
-      where: { articleId: param.id },
-      transaction,
-    });
-
-    const articleCategoryCreates = (param.categories || []).map(catId =>
-      ArticleCategory.create(
-        {
-          articleId: param.id,
-          categoryId: catId,
-        },
-        { transaction }
-      )
-    );
-
-    // 4. 如果没有文件更新，直接更新文章基础信息
-    if (codeArr.length === 0) {
-      const article = await Article.findByPk(param.id);
-      if (!article) {
-        return {
-          err: '文章不存在，无法更新',
-        };
-      }
-      await article.update(
-        {
-          title: param.title,
-          slug: param.slug,
-          excerpt: param.excerpt,
-          authorName: param.user?.name || '翎羽',
-        },
-        {
-          transaction,
-        }
-      );
-      transaction.commit();
-      return {
-        msg: '修改文章成功',
-        data: null,
-      };
-    }
-
-    const confirmResult = await confirmTempMedia(codeArr, transaction);
-
-    // 检查是否是错误结果
-    if (!confirmResult) {
-      await transaction.rollback();
-      return {
-        err: '确认临时媒体失败',
-      };
-    }
-    if ('err' in confirmResult) {
-      await transaction.rollback();
-      return {
-        err: confirmResult.err,
-      };
-    }
-    if (!confirmResult.data || !Array.isArray(confirmResult.data.data)) {
-      await transaction.rollback();
-      return {
-        err: '确认临时媒体失败',
-      };
-    }
-
-    const data = confirmResult.data.data;
 
     try {
-      // 5.1 获取文章文件 URL
-      let articleFileUrl: string | undefined;
-      if (param.isUpdateArticle) {
-        const articleFile = data.find(
-          (item: ConfirmResultType) => item.fileCode === param.articleCode
-        );
-        if (!articleFile) {
-          await transaction.rollback();
-          return {
-            err: '文章内容文件确认失败',
-          };
-        }
-        articleFileUrl = articleFile.fileUrl;
+      await ArticleCategory.destroy({
+        where: { articleId: param.id },
+        transaction,
+      });
+
+      const articleCategoryCreates = (param.categories || []).map(catId =>
+        ArticleCategory.create(
+          {
+            articleId: param.id,
+            categoryId: catId,
+          },
+          { transaction }
+        )
+      );
+
+      const confirmResult =
+        codeArr.length > 0
+          ? await confirmTempMedia(codeArr, transaction)
+          : {
+              data: {
+                data: [],
+              },
+            };
+
+      // 检查是否是错误结果
+      if (!confirmResult) {
+        await transaction.rollback();
+        return {
+          err: '确认临时媒体失败',
+        };
+      }
+      if ('err' in confirmResult) {
+        await transaction.rollback();
+        return {
+          err: confirmResult.err,
+        };
+      }
+      if (!confirmResult.data || !Array.isArray(confirmResult.data.data)) {
+        await transaction.rollback();
+        return {
+          err: '确认临时媒体失败',
+        };
       }
 
-      // 5.2 更新文章
+      const data = confirmResult.data.data;
+
+      // 4. 更新文章
       const article = await Article.findByPk(param.id, { transaction });
       if (!article) {
         await transaction.rollback();
@@ -564,78 +574,91 @@ const updateArticle = async (
         };
       }
 
-      const thumbnailUrl = param.isUpdateThumbnail
-        ? data.find((item: ConfirmResultType) => item.fileCode === param.thumbnailCode)?.fileUrl
-        : article.thumbnailUrl;
+      const previousSlug = article.slug;
 
       await article.update(
         {
           title: param.title,
           slug: param.slug,
-          filePath: param.isUpdateArticle ? articleFileUrl : article.filePath,
           excerpt: param.excerpt,
-          thumbnailUrl,
           authorName: param.user?.name || '翎羽',
         },
         { transaction }
       );
 
-      // 5.3 更新媒体关联（如果更新了文章内容）
-      let articleMediaCreates: Promise<ArticleMedia>[] = [];
-      if (param.isUpdateArticle) {
+      if (param.isUpdateThumbnail) {
         await ArticleMedia.destroy({
-          where: { articleId: param.id },
+          where: { articleId: param.id, usageType: 'thumbnail' },
           transaction,
         });
-        articleMediaCreates = data.map((item: ConfirmResultType) =>
-          ArticleMedia.create(
+
+        if (param.thumbnailCode) {
+          const thumbnailFile = data.find(item => item.fileCode === param.thumbnailCode);
+          if (!thumbnailFile) {
+            await transaction.rollback();
+            return {
+              err: '缩略图确认失败',
+            };
+          }
+
+          await ArticleMedia.create(
             {
               articleId: param.id,
-              mediaId: item.mediaId,
-              usageType:
-                item.fileCode === param.articleCode
-                  ? 'content'
-                  : item.fileCode === param.thumbnailCode
-                    ? 'thumbnail'
-                    : 'attachment',
+              mediaId: thumbnailFile.mediaId,
+              usageType: 'thumbnail',
               sortOrder: 0,
             },
             { transaction }
-          )
-        );
+          );
+        }
       }
 
-      await Promise.all([...articleMediaCreates, ...articleCategoryCreates]);
+      if (param.isUpdateArticle && param.attachmentList) {
+        await ArticleMedia.destroy({
+          where: { articleId: param.id, usageType: 'attachment' },
+          transaction,
+        });
 
-      // 5.5 提交事务
+        const attachmentMediaCreates = param.attachmentList
+          .map(attachment => {
+            const attachmentFile = data.find(item => item.fileCode === attachment.code);
+            if (!attachmentFile) {
+              return null;
+            }
+
+            return ArticleMedia.create(
+              {
+                articleId: param.id,
+                mediaId: attachmentFile.mediaId,
+                usageType: 'attachment',
+                sortOrder: 0,
+              },
+              { transaction }
+            );
+          })
+          .filter((item): item is Promise<ArticleMedia> => item !== null);
+
+        await Promise.all(attachmentMediaCreates);
+      }
+
+      await Promise.all(articleCategoryCreates);
+
+      // 5. 提交事务
       await transaction.commit();
 
-      // 5.6 事务提交后，移动文件并处理文章内容
-      if (data && data.length > 0) {
+      // 6. 事务提交后，移动文件并处理文章内容
+      if (data.length > 0) {
         await Promise.all(data.map((item: ConfirmResultType) => item.moveFiles()));
+      }
 
-        // 处理文章内容，替换临时 src 为永久路径
-        if (param.isUpdateArticle && articleFileUrl) {
-          const articleMDFile = path.join(process.cwd(), articleFileUrl);
-          const articleMDContent = fs.readFileSync(articleMDFile, 'utf-8');
-          const tempToPermanentMapping = new Map<string, string>();
+      if (param.isUpdateArticle && typeof param.content === 'string') {
+        await persistProcessedArticleContent(article, param.content, param.attachmentList, data);
+      }
 
-          if (param.attachmentList) {
-            param.attachmentList.forEach(it => {
-              const fileInfo = data.find((item: ConfirmResultType) => item.fileCode === it.code);
-              if (fileInfo) {
-                tempToPermanentMapping.set(it.source, fileInfo.fileUrl);
-              }
-            });
-          }
-
-          const processedContent = processArticleContent(articleMDContent, tempToPermanentMapping);
-          fs.writeFileSync(articleMDFile, processedContent, 'utf-8');
-
-          // 计算阅读时间并更新文章
-          const readingTime = Math.ceil(processedContent.length / 500);
-          await article.update({ readingTime });
-        }
+      try {
+        await triggerArticleRevalidation([previousSlug, param.slug]);
+      } catch (revalidateError) {
+        console.error('文章更新后刷新前台页面失败:', revalidateError);
       }
 
       return {
@@ -671,9 +694,17 @@ const delArticle = async (
       };
     }
 
+    const previousSlug = article.slug;
+
     // 2. 软删除文章（设置 deletedAt）
     // paranoid 模式下，destroy() 会设置 deletedAt 而不是真正删除
     await article.destroy();
+
+    try {
+      await triggerArticleRevalidation([previousSlug]);
+    } catch (revalidateError) {
+      console.error('文章删除后刷新前台页面失败:', revalidateError);
+    }
 
     return {
       msg: '删除文章成功',

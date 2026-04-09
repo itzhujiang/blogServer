@@ -106,7 +106,7 @@ export enum SettingType {
 // 字符串字面量类型映射
 export type ArticleStatusLiteral = 'draft' | 'published' | 'archived';
 export type CommentStatusLiteral = 'pending' | 'approved' | 'spam' | 'trash';
-export type ArticleMediaUsageLiteral = 'thumbnail' | 'attachment' | 'content';
+export type ArticleMediaUsageLiteral = 'thumbnail' | 'attachment';
 export type ArtworkMediaUsageLiteral = 'main' | 'thumbnail' | 'process' | 'variant';
 export type ArtworkStatusLiteral = 'draft' | 'published';
 export type SettingTypeLiteral = 'string' | 'number' | 'boolean' | 'json';
