@@ -1,16 +1,12 @@
 import { HandlerResult } from '../../utils/getSendResult';
 import { ParameBodyType } from '../../utils/type';
-import {
-  Category,
-  CategoryAttributes,
-  ArticleCategory
-} from '../../models/index';
+import { Category, CategoryAttributes, ArticleCategory } from '../../models/index';
 import { Op, WhereOptions } from 'sequelize';
 
 type CategoryListRequestType = {
-    /** 分类名称（模糊查询） */
-    name?: string;
-}
+  /** 分类名称（模糊查询） */
+  name?: string;
+};
 
 type CategoryListResponseType = Pick<
   CategoryAttributes,
@@ -55,13 +51,12 @@ const getCategoryList = async (
   };
 };
 
-
 type AddCategoryRequestType = {
-    /** 分类名称 */
-    name: string;
-    /** URL标识 */
-    slug: string;
-}
+  /** 分类名称 */
+  name: string;
+  /** URL标识 */
+  slug: string;
+};
 
 /**
  * 添加分类
@@ -99,82 +94,80 @@ type UpdateCategoryRequestType = {
 const updateCategory = async (
   param: ParameBodyType<UpdateCategoryRequestType>
 ): Promise<HandlerResult<null>> => {
-  try {
-    const { id, name, slug } = param;
-    const category = await Category.findByPk(id);
-    if (!category) {
-      return {
-        err: '分类ID不存在',
-      };
-    }
-    const existingCategory = await Category.findOne({ where: { slug } });
-    if (existingCategory && existingCategory.id !== id) {
-      return {
-        err: '分类URL标识已存在',
-      };
-    }
-
-    await category.update({
-      name,
-      slug,
-    });
+  const { id, name, slug } = param;
+  const category = await Category.findByPk(id);
+  if (!category) {
     return {
-      msg: '修改分类成功',
-      data: null,
+      err: '分类ID不存在',
     };
-  } catch (error) {
-    throw error;
   }
+  const existingCategory = await Category.findOne({ where: { slug } });
+  if (existingCategory && existingCategory.id !== id) {
+    return {
+      err: '分类URL标识已存在',
+    };
+  }
+
+  await category.update({
+    name,
+    slug,
+  });
+  return {
+    msg: '修改分类成功',
+    data: null,
+  };
 };
 
 type DelCategoryRequestType = {
-    /** 分类ID */
-    id: number;
-}
+  /** 分类ID */
+  id: number;
+};
 
 /**
  * 删除分类（软删除）
  * 同时删除 article_category 表中的关联记录
  */
-const delCategory = async (param: ParameBodyType<DelCategoryRequestType>): Promise<HandlerResult<null>> => {
-    try {
-        const { id } = param;
+const delCategory = async (
+  param: ParameBodyType<DelCategoryRequestType>
+): Promise<HandlerResult<null>> => {
+  try {
+    const { id } = param;
 
-        // 1. 查找分类
-        const category = await Category.findByPk(id);
-        if (!category) {
-            return {
-                err: '分类不存在，无法删除',
-            };
-        }
-
-        // 2. 软删除分类（设置 deletedAt）
-        // paranoid 模式下，destroy() 会设置 deletedAt 而不是真正删除
-        await category.destroy();
-
-        // 3. 删除 article_category 表中的关联记录（物理删除）
-        // 关联记录不需要保留，直接删除
-        await ArticleCategory.destroy({
-            where: { categoryId: id },
-        });
-
-        return {
-            msg: '删除分类成功',
-            data: null,
-        };
-    } catch (error) {
-        throw new Error('删除分类失败:' + error);
+    // 1. 查找分类
+    const category = await Category.findByPk(id);
+    if (!category) {
+      return {
+        err: '分类不存在，无法删除',
+      };
     }
-}
+
+    // 2. 软删除分类（设置 deletedAt）
+    // paranoid 模式下，destroy() 会设置 deletedAt 而不是真正删除
+    await category.destroy();
+
+    // 3. 删除 article_category 表中的关联记录（物理删除）
+    // 关联记录不需要保留，直接删除
+    await ArticleCategory.destroy({
+      where: { categoryId: id },
+    });
+
+    return {
+      msg: '删除分类成功',
+      data: null,
+    };
+  } catch (error) {
+    throw new Error('删除分类失败:' + error);
+  }
+};
 
 export {
-    CategoryListRequestType,
-    CategoryListResponseType,
-    AddCategoryRequestType,
-    UpdateCategoryRequestType,
-    DelCategoryRequestType,
-    getCategoryList,
-    addCategory,
-    updateCategory,
-    delCategory
-}
+  CategoryListRequestType,
+  CategoryListResponseType,
+  AddCategoryRequestType,
+  UpdateCategoryRequestType,
+  DelCategoryRequestType,
+  getCategoryList,
+  addCategory,
+  updateCategory,
+  delCategory,
+};

@@ -2,6 +2,26 @@
  * 模型索引文件
  * 导出所有模型并定义模型关联关系
  */
+import { sequelize } from './db';
+import { initCategoryModel } from './category';
+import { initMediaFileModel } from './media-file';
+import { initArticleModel } from './article';
+import { initCommentModel } from './comment';
+import { initAIArtworkModel } from './ai-artwork';
+import { initSiteSettingModel } from './site-setting';
+import { initAboutPageModel } from './about-page';
+import { initAboutPageMediaModel } from './about-page-media';
+import { initSearchLogModel } from './search-log';
+import { initArticleCategoryModel } from './article-category';
+import { initArticleMediaModel } from './article-media';
+import { initArtworkMediaModel } from './artwork-media';
+import { initAdminUserModel } from './admin-user';
+import { initTempMediaModel } from './temp-media';
+import { initBigFileRecordModel } from './big-file-record';
+import { initBigFileChunkModel } from './big-file-chunk';
+import { initAiChatUsersModel } from './ai-chat-users';
+import { initAiChatSessionsModel } from './ai-chat-sessions';
+import { initAiChatMessagesModel } from './ai-chat-messages';
 
 export { sequelize } from './db';
 
@@ -36,7 +56,13 @@ export type { ArticleAttributes, ArticleCreationAttributes } from './article';
 export type { CommentAttributes, CommentCreationAttributes } from './comment';
 export type { AIArtworkAttributes, AIArtworkCreationAttributes } from './ai-artwork';
 export type { SiteSettingAttributes, SiteSettingCreationAttributes } from './site-setting';
-export type { AboutPageAttributes, AboutPageCreationAttributes, AboutSkill, AboutSkillItem, AboutTimelineItem } from './about-page';
+export type {
+  AboutPageAttributes,
+  AboutPageCreationAttributes,
+  AboutSkill,
+  AboutSkillItem,
+  AboutTimelineItem,
+} from './about-page';
 export type { SearchLogAttributes, SearchLogCreationAttributes } from './search-log';
 export type {
   ArticleCategoryAttributes,
@@ -49,9 +75,14 @@ export type { TempMediaAttributes, TempMediaCreationAttributes } from './temp-me
 export type { BigFileRecordAttributes, BigFileRecordCreationAttributes } from './big-file-record';
 export type { BigFileChunkAttributes, BigFileChunkCreationAttributes } from './big-file-chunk';
 export type { AiChatUsersAttributes, AiChatUsersCreationAttributes } from './ai-chat-users';
-export type { AiChatSessionsAttributes, AiChatSessionsCreationAttributes } from './ai-chat-sessions';
-export type { AiChatMessagesAttributes, AiChatMessagesCreationAttributes } from './ai-chat-messages';
-
+export type {
+  AiChatSessionsAttributes,
+  AiChatSessionsCreationAttributes,
+} from './ai-chat-sessions';
+export type {
+  AiChatMessagesAttributes,
+  AiChatMessagesCreationAttributes,
+} from './ai-chat-messages';
 
 /**
  * 初始化所有模型
@@ -61,26 +92,6 @@ export type { AiChatMessagesAttributes, AiChatMessagesCreationAttributes } from 
  */
 export async function initAllModels(force = false, alter = false) {
   // 导入模型（避免循环依赖）
-  const { sequelize } = await import('./db');
-  const { initCategoryModel } = await import('./category');
-  const { initMediaFileModel } = await import('./media-file');
-  const { initArticleModel } = await import('./article');
-  const { initCommentModel } = await import('./comment');
-  const { initAIArtworkModel } = await import('./ai-artwork');
-  const { initSiteSettingModel } = await import('./site-setting');
-  const { initAboutPageModel } = await import('./about-page');
-  const { initAboutPageMediaModel } = await import('./about-page-media');
-  const { initSearchLogModel } = await import('./search-log');
-  const { initArticleCategoryModel } = await import('./article-category');
-  const { initArticleMediaModel } = await import('./article-media');
-  const { initArtworkMediaModel } = await import('./artwork-media');
-  const { initAdminUserModel } = await import('./admin-user');
-  const { initTempMediaModel } = await import('./temp-media');
-  const { initBigFileRecordModel } = await import('./big-file-record');
-  const { initBigFileChunkModel } = await import('./big-file-chunk');
-  const { initAiChatUsersModel } = await import('./ai-chat-users');
-  const { initAiChatSessionsModel } = await import('./ai-chat-sessions');
-  const { initAiChatMessagesModel } = await import('./ai-chat-messages');
 
   // 初始化所有模型
   const Category = initCategoryModel(sequelize);
@@ -325,7 +336,6 @@ export async function initAllModels(force = false, alter = false) {
  */
 export async function testConnection(): Promise<boolean> {
   try {
-    const { sequelize } = await import('./db');
     await sequelize.authenticate();
     console.log('数据库连接成功');
     return true;

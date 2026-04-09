@@ -176,11 +176,11 @@ const getCommentsList = async (
 type ReviewCommentParamType = {
   id: number;
   status: 'approved' | 'spam';
-}
+};
 /**
  * 更新评论审核状态
- * @param param 
- * @returns 
+ * @param param
+ * @returns
  */
 const reviewComment = async (param: ReviewCommentParamType): Promise<HandlerResult<null>> => {
   try {
@@ -189,41 +189,37 @@ const reviewComment = async (param: ReviewCommentParamType): Promise<HandlerResu
     if (!comment) {
       return {
         err: '评论不存在',
-      }
+      };
     }
-  await comment.update({ status });
-  return {
+    await comment.update({ status });
+    return {
       data: null,
       msg: '评论审核状态更新成功',
-  }
+    };
   } catch (error) {
     throw new Error('审核评论失败' + error);
   }
-}
+};
 
 type DelCommentParamType = {
   /** id */
   id: number;
-}
+};
 
 const delComment = async (param: DelCommentParamType): Promise<HandlerResult<null>> => {
-  try {
-    const {id} = param;
-    const comment = await Comment.findByPk(id);
-    if (!comment) {
-      return {
-        err: '评论不存在',
-      }
-    }
-    await comment.update({ status: 'trash' });
+  const { id } = param;
+  const comment = await Comment.findByPk(id);
+  if (!comment) {
     return {
-      data: null,
-      msg: '评论删除成功',
+      err: '评论不存在',
     };
-  } catch (error) {
-    
   }
-}
+  await comment.update({ status: 'trash' });
+  return {
+    data: null,
+    msg: '评论删除成功',
+  };
+};
 
 export {
   CommentsRequestType,
@@ -233,5 +229,5 @@ export {
   DelCommentParamType,
   getCommentsList,
   delComment,
-  reviewComment
+  reviewComment,
 };

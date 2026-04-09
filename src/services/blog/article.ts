@@ -710,7 +710,7 @@ const processArticleContent = (content: string, mapping: Map<string, string>) =>
   // 处理 <video> 标签：保留 HTML 标签，只替换 src 路径
   content = content.replace(/<video\s+([^>]*?)>/gi, (_match, attributes) => {
     const srcMatch = attributes.match(/src=["']([^"']+)["']/i);
-    let src = srcMatch?.[1] || '';
+    const src = srcMatch?.[1] || '';
 
     // 路径替换
     let newSrc = src;

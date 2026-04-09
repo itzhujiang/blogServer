@@ -214,7 +214,7 @@ const confirmTempMedia = async (
   const shouldAutoCommit = !externalTransaction;
 
   // 校验 codes 数组，过滤无效值
-  const validCodes = codes.filter(c => c != null && c !== '');
+  const validCodes = codes.filter(c => c !== null && c !== '');
   if (validCodes.length !== codes.length) {
     if (shouldAutoCommit) {
       await transaction.rollback();
@@ -259,6 +259,7 @@ const confirmTempMedia = async (
         await fs.unlink(path.join(process.cwd(), tempMedia.filePath));
       } catch (e) {
         // 忽略删除错误
+        console.log(e);
       }
       await tempMedia.destroy();
       if (shouldAutoCommit) {
@@ -285,6 +286,7 @@ const confirmTempMedia = async (
           await fs.unlink(oldFilePath);
         } catch (e) {
           // 忽略删除错误
+          console.log(e);
         }
 
         // 标记临时文件已使用（使用传入的事务）
@@ -412,6 +414,7 @@ const cleanupExpiredTempFiles = async (): Promise<{ deleted: number }> => {
       await fs.unlink(fullPath);
     } catch (e) {
       // 忽略删除错误（文件可能已不存在）
+      console.log(e);
     }
     await tempMedia.destroy();
     deleted++;
@@ -667,6 +670,7 @@ const mergeBigFileChunks = async (
     await fs.rm(chunksDir, { recursive: true, force: true });
   } catch (e) {
     // 忽略删除错误
+    console.log(e);
   }
 
   // 更新大文件记录状态
@@ -739,7 +743,10 @@ const getBigFileStatus = async (
 /**
  * 清理过期的大文件上传记录
  */
-const cleanupExpiredBigFiles = async (): Promise<{ deletedRecords: number; deletedChunks: number }> => {
+const cleanupExpiredBigFiles = async (): Promise<{
+  deletedRecords: number;
+  deletedChunks: number;
+}> => {
   const expiryTime = 24 * 60 * 60 * 1000; // 24小时
   const cutoffTime = Date.now() - expiryTime;
 
@@ -761,6 +768,7 @@ const cleanupExpiredBigFiles = async (): Promise<{ deletedRecords: number; delet
       await fs.rm(chunksDir, { recursive: true, force: true });
     } catch (e) {
       // 忽略删除错误
+      console.log(e);
     }
 
     // 删除分片记录

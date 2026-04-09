@@ -5,41 +5,30 @@ import {
   chat,
   getSessionList,
   MessagesRequsetType,
-  sendMessage,
-  SendMessageRequsetType,
-  SendMessageResponseType,
   SessionListResponseType,
   MessagesResponseType,
   getMessages,
   SessionListRequsetType,
+  ChatRequestType,
 } from '../../services/ai/aiChat';
 import {
+  agUiChatValidation,
   handleValidationErrors,
   messagesValidation,
-  sendMessageValidation,
   sessionListValidation,
 } from '../../validators';
 import { asyncHandler } from '../../utils/getSendResult';
 
 const router = express.Router();
 
-router.get(
+router.post(
   '/chat',
-  asyncHandler<null, null, 'get'>(async (req, res) => {
+  [...agUiChatValidation, handleValidationErrors],
+  asyncHandler<ChatRequestType, null, 'post'>(async (req, res) => {
     await chat(req, res);
   })
 );
 
-router.post(
-  '/sendMessage',
-  [...sendMessageValidation, handleValidationErrors],
-  asyncHandler<SendMessageRequsetType, SendMessageResponseType, 'post'>(async req => {
-    return await sendMessage({
-      ...req.body,
-      aiUser: req.aiUser,
-    });
-  })
-);
 // 获取会话列表
 router.get(
   '/getSessionList',
@@ -59,7 +48,5 @@ router.get(
     return await getMessages(req.query);
   })
 );
-
-
 
 export default router;

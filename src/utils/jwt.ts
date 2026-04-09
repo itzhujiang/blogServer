@@ -42,7 +42,7 @@ const issueJwt = (
  * @returns 返回解密出来的字符串
  */
 const verifyJwt = (req: RequestType<unknown>, secretKey: JwtSecretKey = 1) => {
-  let authorization = secretKey === 1 ? req.headers.authorization : req.cookies?.aiToken;
+  const authorization = secretKey === 1 ? req.headers.authorization : req.cookies?.aiToken;
   if (!authorization) {
     return null;
   }

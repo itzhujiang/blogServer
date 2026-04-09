@@ -75,7 +75,7 @@ class PhoneCode {
       if (!this.client) {
         throw new Error('阿里云短信服务客户端未初始化');
       }
-      let resp = await this.client.checkSmsVerifyCodeWithOptions(
+      const resp = await this.client.checkSmsVerifyCodeWithOptions(
         checkSmsVerifyCodeRequest,
         runtime
       );

@@ -1,160 +1,63 @@
-import { createSession } from "better-sse"
-
-import { ParameBodyType, RequestType, ResponseType } from "../../utils/type"
-import sseManager, { ConnectionMessage } from '../../utils/sse';
+import { ParameBodyType, RequestType, ResponseType } from '../../utils/type';
+import { agui } from '../../ai/agreement';
 import { HandlerResult } from '../../utils/getSendResult';
-import { v4 as uuidv4 } from 'uuid';
 import {
   AiChatSessions,
-  sequelize,
   AiChatMessages,
   AiChatMessageRoleLiteral,
   AiChatMessageTypeLiteral,
 } from '../../models';
+import { RunAgentInput } from '@ag-ui/core';
+import { v4 as uuidv4 } from 'uuid';
+import { agUiInputToUnifyInput, unifyInputToLangChainInput } from '@/ai/utils/adapters';
+import { getWeatherAgent } from '@/ai/agent';
 
-const chat = async (req: RequestType<null, 'get'>, res: ResponseType) => {
-  const { id } = req.aiUser!;
+type ChatRequestType = RunAgentInput;
+
+const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType) => {
+  console.log(req.ip);
+  // const { id } = req.aiUser!;
+  const uuid = uuidv4();
   try {
-    const session = await createSession(req, res, {
-      keepAlive: 30000, // 30 秒心跳
-      retry: 3000, // 3 秒重连间隔
-    });
+    const reasoningId = uuidv4();
+    const activityId = uuidv4();
+    agui.initSSE(res);
+    agui.runStarted(res, req.body.threadId, req.body.runId);
+    const langChainInput = unifyInputToLangChainInput(agUiInputToUnifyInput(req.body));
+    console.log('langChainInput', langChainInput);
 
-    // 连接建立的处理逻辑
-    const handleConnected = () => {
-      console.log(`用户 ${id} SSE 连接已建立`);
-      sseManager.addConnection(String(id), session);
-      sseManager.pushToUser<ConnectionMessage>(
-        String(id),
-        {
-          role: 'system',
-          msgType: 'overall',
-          content: '连接已建立',
-        },
-        'system'
-      );
-    };
-
-    // 注册事件监听器
-    session.once('connected', handleConnected);
-
-    // 如果连接已经建立（事件已触发），手动调用处理逻辑
-    if (session.isConnected) {
-      handleConnected();
-    }
-
-    session.once('disconnected', () => {
-      console.log(`用户 ${id} SSE 连接已断开`);
-      sseManager.removeConnection(String(id));
-    });
-  } catch (err) {
-    console.error('创建 SSE 会话失败:', err);
-    throw err;
-  }
-};
-
-type SendMessageRequsetType = {
-  /** 用户消息 */
-  message: string;
-  /** 客户端信息id */
-  localId: string;
-  /** 会话id */
-  sessionId?: number;
-};
-
-type SendMessageResponseType = {
-  /** 服务端信息id */
-  serverId: string;
-  /** 客户端信息id */
-  clientMessageId: string;
-  /** 会话id */
-  sessionId: number;
-};
-
-/**
- * 发送信息
- * @param params
- * @returns
- */
-const sendMessage = async (
-  params: ParameBodyType<SendMessageRequsetType>
-): Promise<HandlerResult<SendMessageResponseType>> => {
-  const transaction = await sequelize.transaction();
-  try {
-    const { aiUser, message, localId, sessionId } = params;
-
-    if (!sseManager.hasConnection(String(aiUser!.id))) {
-      return {
-        err: 'SSE 连接未建立，请先建立 SSE 连接',
-      };
-    }
-    const uuid = uuidv4();
-    const now = Date.now();
-    let aiChatSessions: AiChatSessions;
-    if (!sessionId) {
-      aiChatSessions = await AiChatSessions.create(
-        {
-          user_id: aiUser!.id,
-          title: message,
-          last_message_preview: message,
-          last_message_at: now,
-        },
-        { transaction }
-      );
-    } else {
-      const res = await AiChatSessions.findByPk(sessionId);
-      if (!res) {
-        return {
-          err: '会话不存在',
-        };
-      }
-      aiChatSessions = res;
-      res.update(
-        {
-          last_message_preview: message,
-          last_message_at: now,
-        },
-        { transaction }
-      );
-    }
-
-    await AiChatMessages.create(
+    agui.reasoningStart(res, reasoningId);
+    agui.activitySnapshot(
+      res,
+      'THINKING',
       {
-        server_id: uuid,
-        session_id: aiChatSessions.id,
-        role: 'user',
-        message_type: 'text',
-        content: message,
+        status: 'pending',
+        content: 'AI 正在思考中',
       },
-      { transaction }
+      activityId
     );
+    const run = getWeatherAgent();
+    const lastMessage = langChainInput.messages[langChainInput.messages.length - 1];
+    const runResult = await run(
+      req.body.threadId,
+      lastMessage.content as string,
+      req.aiUser?.id?.toString() ?? ''
+    );
+    agui.activityDelta(res, 'THINKING', activityId, [
+      { op: 'replace', path: '/status', value: 'success' },
+      { op: 'replace', path: '/content', value: 'AI 思考完成' },
+    ]);
+    console.log('runResult', runResult);
+    agui.reasoningEnd(res, reasoningId);
+    agui.textMessageStart(res, uuid);
+    agui.textMessageContent(res, uuid, runResult as string);
+    agui.textMessageEnd(res, uuid);
+    agui.end(res);
 
-    transaction.commit();
-    sseManager.pushToUser(
-      String(aiUser!.id),
-      {
-        serverId: uuid,
-        content: '你好',
-        role: 'assistant',
-        createdAt: now,
-        sessionId: aiChatSessions.id,
-        msgType: 'overall',
-      },
-      'message'
-    );
-    return {
-      msg: '发送成功',
-      data: {
-        data: {
-          clientMessageId: localId,
-          serverId: uuid,
-          sessionId: aiChatSessions.id,
-        },
-      },
-    };
-  } catch (err) {
-    transaction.rollback();
-    throw err;
+    return null;
+  } catch (error) {
+    console.log(error);
+    return null;
   }
 };
 
@@ -172,37 +75,37 @@ type SessionListResponseType = {
 
 type SessionListRequsetType = {
   /** 排序 */
-  sort: 'ASC' | 'DESC'
-}
+  sort: 'ASC' | 'DESC';
+};
 
 /**
  * 获取会话列表
- * @param params 
+ * @param params
  */
-const getSessionList = async (params: ParameBodyType<SessionListRequsetType>): Promise<HandlerResult<SessionListResponseType>> => {
+const getSessionList = async (
+  params: ParameBodyType<SessionListRequsetType>
+): Promise<HandlerResult<SessionListResponseType>> => {
   const { aiUser, size = 10, page = 1, sort = 'ASC' } = params;
   if (!aiUser) {
     return {
       err: '未找到用户',
-    }
+    };
   }
-  const {rows, count} = await AiChatSessions.findAndCountAll({
+  const { rows, count } = await AiChatSessions.findAndCountAll({
     limit: size,
     offset: (page - 1) * size,
     distinct: true, // 防止关联查询导致的重复计数
     order: [['last_message_at', sort]],
-    attributes: [
-      'id', 'title', 'last_message_preview', 'last_message_at'
-    ]
+    attributes: ['id', 'title', 'last_message_preview', 'last_message_at'],
   });
 
   const results = rows.map(item => ({
     id: item.id,
     title: item.title,
     lastMessagePreview: item.last_message_preview,
-    lastMessageAt: item.last_message_at
-  }))
-  
+    lastMessageAt: item.last_message_at,
+  }));
+
   return {
     msg: '成功',
     data: {
@@ -210,18 +113,18 @@ const getSessionList = async (params: ParameBodyType<SessionListRequsetType>): P
       pagination: {
         page,
         size,
-        total: count
-      }
-    }
-  }
-} 
+        total: count,
+      },
+    },
+  };
+};
 
 type MessagesRequsetType = {
   /** 会话id */
-  id?: number,
+  id?: number;
   /** 排序 */
-  sort?: 'ASC' | 'DESC'
-}
+  sort?: 'ASC' | 'DESC';
+};
 
 type MessagesResponseType = {
   /** 消息id */
@@ -233,15 +136,17 @@ type MessagesResponseType = {
   /** 角色 */
   role: AiChatMessageRoleLiteral;
   /** 消息类型 */
-  messageType: AiChatMessageTypeLiteral
+  messageType: AiChatMessageTypeLiteral;
   /** 内容 */
   content: string;
   /** 创建时间 */
   createdAt: number;
-}
+};
 
-const getMessages = async (params: ParameBodyType<MessagesRequsetType>): Promise<HandlerResult<MessagesResponseType>> => {
-  const {id, page = 1, size = 20, sort = 'ASC'} = params;
+const getMessages = async (
+  params: ParameBodyType<MessagesRequsetType>
+): Promise<HandlerResult<MessagesResponseType>> => {
+  const { id, page = 1, size = 20, sort = 'ASC' } = params;
   if (id) {
     return {
       msg: '成功',
@@ -250,12 +155,12 @@ const getMessages = async (params: ParameBodyType<MessagesRequsetType>): Promise
         pagination: {
           page,
           size,
-          total: 0
-        }
-      }
-    }
+          total: 0,
+        },
+      },
+    };
   }
-  const {rows, count} = await AiChatMessages.findAndCountAll({
+  const { rows, count } = await AiChatMessages.findAndCountAll({
     where: {
       id,
     },
@@ -263,11 +168,8 @@ const getMessages = async (params: ParameBodyType<MessagesRequsetType>): Promise
     offset: (page - 1) * size,
     distinct: true, // 防止关联查询导致的重复计数
     order: [['createdAt', sort]],
-    attributes: [
-      'id',
-      'serverId'
-    ]
-  })
+    attributes: ['id', 'serverId'],
+  });
 
   const results = rows.map(item => ({
     id: item.id,
@@ -276,8 +178,8 @@ const getMessages = async (params: ParameBodyType<MessagesRequsetType>): Promise
     role: item.role,
     messageType: item.message_type,
     content: item.content,
-    createdAt: item.createdAt
-  }))
+    createdAt: item.createdAt,
+  }));
 
   return {
     msg: '成功',
@@ -286,10 +188,19 @@ const getMessages = async (params: ParameBodyType<MessagesRequsetType>): Promise
       pagination: {
         page,
         size,
-        total: count
-      }
-    }
-  }
-}
+        total: count,
+      },
+    },
+  };
+};
 
-export { SendMessageRequsetType, SendMessageResponseType,SessionListResponseType, MessagesRequsetType,MessagesResponseType, SessionListRequsetType, chat, sendMessage,getSessionList, getMessages }
+export {
+  ChatRequestType,
+  SessionListResponseType,
+  MessagesRequsetType,
+  MessagesResponseType,
+  SessionListRequsetType,
+  chat,
+  getSessionList,
+  getMessages,
+};

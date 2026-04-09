@@ -30,6 +30,7 @@ export {
 export { aiLoginValidation } from './blog/aiUserValidator';
 export { sendPhoneCodeValidation } from './tools/codeValidator';
 export {
+  agUiChatValidation,
   sendMessageValidation,
   messagesValidation,
   sessionListValidation,

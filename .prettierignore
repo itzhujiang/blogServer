@@ -61,7 +61,6 @@ temp/
 Thumbs.db
 
 # 编辑器文件
-.vscode/
 .idea/
 *.swp
 *.swo

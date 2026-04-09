@@ -1,8 +1,13 @@
 import { HandlerResult } from '../../utils/getSendResult';
 import { ParameBodyType } from '../../utils/type';
-import { AboutPageAttributes, AboutPage, AboutPageMedia, MediaFile, sequelize } from '../../models/index';
+import {
+  AboutPageAttributes,
+  AboutPage,
+  AboutPageMedia,
+  MediaFile,
+  sequelize,
+} from '../../models/index';
 import { ConfirmResultType, confirmTempMedia } from './mediaFile';
-
 
 /**
  * 扩展的关于我信息类型，包含头像URL和内容URL
@@ -17,56 +22,57 @@ type AboutMeInfoResponseType = Omit<AboutPageAttributes, 'content'> & {
  * @returns
  */
 const getAboutMeInfo = async (): Promise<HandlerResult<AboutMeInfoResponseType>> => {
-  try {
-    const aboutMeInfo = await AboutPage.findAll();
-    if (aboutMeInfo.length === 0) {
-      return { err: '关于我信息不存在' };
-    }
+  const aboutMeInfo = await AboutPage.findAll();
+  if (aboutMeInfo.length === 0) {
+    return { err: '关于我信息不存在' };
+  }
 
-    const aboutPage = aboutMeInfo[0].toJSON();
-    const id = aboutPage.id;
+  const aboutPage = aboutMeInfo[0].toJSON();
+  const id = aboutPage.id;
 
-    // 查询所有关联的媒体文件（avatar 和 content）
-    const aboutPageMedias = await AboutPageMedia.findAll({
-      where: { aboutPageId: id },
-      include: [{
+  // 查询所有关联的媒体文件（avatar 和 content）
+  const aboutPageMedias = await AboutPageMedia.findAll({
+    where: { aboutPageId: id },
+    include: [
+      {
         model: MediaFile,
         as: 'media',
         attributes: ['fileUrl'],
-      }],
-    });
-
-    // 提取 avatar 和 content URL
-    let avatarUrl: string | null = null;
-    let contentUrl: string | null = null;
-
-    aboutPageMedias.forEach((media) => {
-      const mediaData = media.get('media') as { fileUrl: string } | undefined;
-      if (mediaData) {
-        if (media.usageType === 'avatar') {
-          avatarUrl = mediaData.fileUrl;
-        } else if (media.usageType === 'content') {
-          contentUrl = mediaData.fileUrl;
-        }
-      }
-    });
-
-    // 移除 content 字段（如果存在）
-    const aboutPageWithoutContent = aboutPage;
-
-    return {
-      data: {
-        data: [{ ...aboutPageWithoutContent, avatarUrl, contentUrl }],
-        pagination: { page: 1, size: 1, total: 1 },
       },
-      msg: '成功',
-    };
-  } catch (error) {
-    throw error;
-  }
+    ],
+  });
+
+  // 提取 avatar 和 content URL
+  let avatarUrl: string | null = null;
+  let contentUrl: string | null = null;
+
+  aboutPageMedias.forEach(media => {
+    const mediaData = media.get('media') as { fileUrl: string } | undefined;
+    if (mediaData) {
+      if (media.usageType === 'avatar') {
+        avatarUrl = mediaData.fileUrl;
+      } else if (media.usageType === 'content') {
+        contentUrl = mediaData.fileUrl;
+      }
+    }
+  });
+
+  // 移除 content 字段（如果存在）
+  const aboutPageWithoutContent = aboutPage;
+
+  return {
+    data: {
+      data: [{ ...aboutPageWithoutContent, avatarUrl, contentUrl }],
+      pagination: { page: 1, size: 1, total: 1 },
+    },
+    msg: '成功',
+  };
 };
 
-type UpdateAboutMeInfoParamsType = Omit<AboutPageAttributes, 'updatedAt' | 'nickname' | 'content'> & {
+type UpdateAboutMeInfoParamsType = Omit<
+  AboutPageAttributes,
+  'updatedAt' | 'nickname' | 'content'
+> & {
   avatarCode?: string; // 头像Code，用于生成头像URL
   contentCode?: string; // 内容文件Code
   isUpdateAvatar: boolean; // 是否更新头像
@@ -173,37 +179,33 @@ const updateAboutMeInfo = async (
   }
 };
 
-
 /**
  * 获取关于我页面的头像URL
  */
 const getAboutMeAvatar = async (aboutPageId: number): Promise<string | null> => {
-    try {
-        const aboutPageMedia = await AboutPageMedia.findOne({
-            where: { aboutPageId, usageType: 'avatar' },
-            include: [{
-                model: AboutPage,
-                as: 'aboutPage'
-            }]
-        });
+  const aboutPageMedia = await AboutPageMedia.findOne({
+    where: { aboutPageId, usageType: 'avatar' },
+    include: [
+      {
+        model: AboutPage,
+        as: 'aboutPage',
+      },
+    ],
+  });
 
-        if (!aboutPageMedia) {
-            return null;
-        }
+  if (!aboutPageMedia) {
+    return null;
+  }
 
-        // 通过关联获取 media
-        const media = await aboutPageMedia.get('media') as { fileUrl: string } | undefined;
-        return media?.fileUrl || null;
-    } catch (error) {
-        throw error;
-    }
-}
-
+  // 通过关联获取 media
+  const media = (await aboutPageMedia.get('media')) as { fileUrl: string } | undefined;
+  return media?.fileUrl || null;
+};
 
 export {
-    AboutMeInfoResponseType,
-    UpdateAboutMeInfoParamsType,
-    getAboutMeInfo,
-    updateAboutMeInfo,
-    getAboutMeAvatar
+  AboutMeInfoResponseType,
+  UpdateAboutMeInfoParamsType,
+  getAboutMeInfo,
+  updateAboutMeInfo,
+  getAboutMeAvatar,
 };
