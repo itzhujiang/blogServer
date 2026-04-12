@@ -175,7 +175,7 @@
         "slug": "article-slug",
         "excerpt": "文章摘要",
         "thumbnailUrl": "/uploads/file/2024/01/xxx.jpg",
-        "fileUrl": "/uploads/file/2024/01/article-content.md",
+        "content": "# 文章正文\n这里是已经处理后的 Markdown 内容",
         "attachmentUrlArr": [
           "/uploads/file/2024/01/attachment1.pdf",
           "/uploads/file/2024/01/attachment2.zip"
@@ -217,9 +217,14 @@
 | slug | string | 是 | URL友好标识（唯一） |
 | thumbnailCode | string | 否 | 缩略图文件Code |
 | excerpt | string | 是 | 文章摘要 |
-| articleCode | string | 是 | 文章内容文件Code |
+| content | string | 是 | 文章正文 Markdown 内容 |
 | attachmentList | {code: string, source: string} | 否 | 附件文件Code数组 |
 | categories | number[] | 否 | 分类ID数组 |
+
+**说明：**
+- 文章正文直接通过 `content` 字段提交并存储在数据库 `articles.content` 中
+- `thumbnailCode` 和 `attachmentList` 仍通过媒体上传接口获取并确认
+- 正文不再对应独立的 Markdown 文件，也不再返回正文 `fileUrl`
 
 **成功响应：**
 ```json
@@ -249,11 +254,16 @@
 | slug | string | 否 | URL友好标识 |
 | thumbnailCode | string | 否 | 缩略图文件Code |
 | excerpt | string | 否 | 文章摘要 |
-| articleCode | string | 否 | 文章内容文件Code |
-| attachmentList | {code: string, source: string} | 否 | 附件文件Code数组 |
+| content | string | 否 | 文章正文 Markdown 内容；当 `isUpdateArticle=true` 时必传 |
+| attachmentList | {code: string, source: string} | 否 | 附件文件Code数组；传新列表时会替换旧附件关联 |
 | categories | number[] | 否 | 分类ID数组 |
-| isUpdateArticle | boolean | 否 | 是否更新文章内容 |
+| isUpdateArticle | boolean | 否 | 是否更新文章内容；为 `true` 时会使用本次 `content` 覆盖正文 |
 | isUpdateThumbnail | boolean | 否 | 是否更新缩略图 |
+
+**说明：**
+- 仅更新正文文本且不传 `attachmentList` 时，现有附件关联会保留
+- 仅更新缩略图时，正文与附件不受影响
+- 列表/详情响应不再返回正文 Markdown 文件 `fileUrl`
 
 **成功响应：**
 ```json
@@ -525,25 +535,79 @@
 
 ---
 
-### 4.3 删除评论
+### 4.4 发布作者评论
 
 | 属性 | 值 |
 |------|----|
-| **URL** | `/api/blog/comment/delComment` |
-| **Method** | `delete` |
+| **URL** | `/api/blog/comment/publishAuthorComment` |
+| **Method** | `POST` |
 | **Content-Type** | `application/json` |
 
 **请求参数：**
 
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|:----:|------|
-| id | number | 是 | 评论ID |
+| articleId | number | 是 | 文章ID |
+| content | string | 是 | 评论内容 |
+
+**说明：**
+- 该接口用于后台管理员以作者身份发布评论
+- 需要登录态，服务端会从当前登录用户中读取 `userId` 和 `name`
+- 评论会自动标记为作者评论，并默认审核通过
 
 **成功响应：**
 ```json
 {
   "code": 200,
-  "msg": "评论删除成功",
+  "msg": "发布成功",
+  "data": null
+}
+```
+
+**错误响应：**
+```json
+{
+  "code": 500,
+  "msg": "文章不存在",
+  "data": null
+}
+```
+
+```json
+{
+  "code": 500,
+  "msg": "用户不存在",
+  "data": null
+}
+```
+
+---
+
+### 4.5 回复评论
+
+| 属性 | 值 |
+|------|----|
+| **URL** | `/api/blog/comment/replyComment` |
+| **Method** | `POST` |
+| **Content-Type** | `application/json` |
+
+**请求参数：**
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|:----:|------|
+| id | number | 是 | 被回复的评论ID |
+| content | string | 是 | 回复内容 |
+
+**说明：**
+- 该接口用于后台管理员回复指定评论
+- 需要登录态，服务端会从当前登录用户中读取 `userId` 和 `name`
+- 回复评论会以当前评论作为父评论，并自动标记为作者评论，默认审核通过
+
+**成功响应：**
+```json
+{
+  "code": 200,
+  "msg": "回复成功",
   "data": null
 }
 ```
@@ -553,6 +617,14 @@
 {
   "code": 500,
   "msg": "评论不存在",
+  "data": null
+}
+```
+
+```json
+{
+  "code": 500,
+  "msg": "用户不存在",
   "data": null
 }
 ```

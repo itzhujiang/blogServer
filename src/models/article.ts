@@ -11,9 +11,8 @@ export interface ArticleAttributes {
   id: number; // 文章ID
   title: string; // 文章标题
   slug: string; // URL友好标识（用于SEO）
-  filePath: string; // 服务端文件路径（Markdown文件路径）
+  content: string; // 文章正文内容（Markdown）
   excerpt: string | null; // 文章摘要
-  thumbnailUrl: string | null; // 缩略图URL（文章列表展示用）
   authorName: string; // 作者名（默认：木心）
   readingTime: number; // 预计阅读时间（分钟）
   viewCount: number; // 浏览次数
@@ -29,7 +28,6 @@ export type ArticleCreationAttributes = Optional<
   ArticleAttributes,
   | 'id'
   | 'excerpt'
-  | 'thumbnailUrl'
   | 'readingTime'
   | 'viewCount'
   | 'status'
@@ -47,9 +45,8 @@ export class Article
   declare id: number;
   declare title: string;
   declare slug: string;
-  declare filePath: string;
+  declare content: string;
   declare excerpt: string | null;
-  declare thumbnailUrl: string | null;
   declare authorName: string;
   declare readingTime: number;
   declare viewCount: number;
@@ -88,20 +85,16 @@ export function initArticleModel(sequelize: Sequelize): typeof Article {
         unique: true,
         comment: 'URL友好标识',
       },
-      filePath: {
-        type: DataTypes.STRING(500),
+      content: {
+        type: DataTypes.TEXT,
         allowNull: false,
-        comment: '服务端文件路径',
+        defaultValue: '',
+        comment: '文章正文内容（Markdown）',
       },
       excerpt: {
         type: DataTypes.TEXT,
         allowNull: true,
         comment: '文章摘要',
-      },
-      thumbnailUrl: {
-        type: DataTypes.STRING(500),
-        allowNull: true,
-        comment: '列表缩略图URL',
       },
       authorName: {
         type: DataTypes.STRING(100),

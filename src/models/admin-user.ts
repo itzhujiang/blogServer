@@ -10,6 +10,7 @@ export interface AdminUserAttributes {
   email: string; // 邮箱地址（用于密码重置和通知）
   displayName: string | null; // 显示名称（后台展示用）
   avatarUrl: string | null; // 头像URL
+  phone: string | null; // 电话号码
   passwordHash: string; // 密码哈希值（MD5算法）
   passwordSalt: string; // 密码盐值（增强安全性）
   status: AdminStatusLiteral; // 账户状态（active=活跃, inactive=停用, locked=锁定）
@@ -48,6 +49,7 @@ export class AdminUser
   declare avatarUrl: string | null;
   declare passwordHash: string;
   declare passwordSalt: string;
+  declare phone: string;
   declare status: AdminStatusLiteral;
   declare lastLoginAt: number | null;
   declare lastLoginIp: string | null;
@@ -104,6 +106,11 @@ export function initAdminUserModel(sequelize: Sequelize): typeof AdminUser {
         allowNull: false,
         defaultValue: 'active',
         comment: '账户状态 (active=活跃, inactive=停用, locked=锁定)',
+      },
+      phone: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        comment: '电话号码',
       },
       lastLoginAt: {
         type: DataTypes.BIGINT,

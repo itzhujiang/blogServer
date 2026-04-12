@@ -10,9 +10,9 @@ export interface CommentAttributes {
   articleId: number; // 关联文章ID
   parentId: number | null; // 父评论ID（用于嵌套回复，null表示顶级评论）
   authorName: string; // 访客姓名
+  isAuthor: boolean; // 是否为作者
   authorEmail: string | null; // 访客邮箱
   authorPhone: string | null; // 访客手机号
-  authorUrl: string | null; // 访客网站
   authorIp: string | null; // IP地址（用于防垃圾评论）
   content: string; // 评论内容
   status: CommentStatusLiteral; // 审核状态（pending=待审核, approved=已通过, spam=垃圾评论, trash=已删除）
@@ -26,8 +26,8 @@ export type CommentCreationAttributes = Optional<
   CommentAttributes,
   | 'id'
   | 'parentId'
+  | 'isAuthor'
   | 'authorEmail'
-  | 'authorUrl'
   | 'authorIp'
   | 'status'
   | 'likeCount'
@@ -45,8 +45,8 @@ export class Comment
   declare articleId: number;
   declare parentId: number | null;
   declare authorName: string;
+  declare isAuthor: boolean;
   declare authorEmail: string | null;
-  declare authorUrl: string | null;
   declare authorIp: string | null;
   declare content: string;
   declare status: CommentStatusLiteral;
@@ -87,6 +87,12 @@ export function initCommentModel(sequelize: Sequelize): typeof Comment {
         allowNull: false,
         comment: '访客姓名',
       },
+      isAuthor: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: '是否为作者',
+      },
       authorEmail: {
         type: DataTypes.STRING(255),
         allowNull: true,
@@ -96,11 +102,6 @@ export function initCommentModel(sequelize: Sequelize): typeof Comment {
         type: DataTypes.STRING(255),
         allowNull: true,
         comment: '访客手机号',
-      },
-      authorUrl: {
-        type: DataTypes.STRING(255),
-        allowNull: true,
-        comment: '访客网站',
       },
       authorIp: {
         type: DataTypes.STRING(45),

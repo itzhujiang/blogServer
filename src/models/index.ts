@@ -178,13 +178,19 @@ export async function initAllModels(force = false, alter = false) {
 
   // Article <-> MediaFile (多对多，通过 ArticleMedia)
   Article.belongsToMany(MediaFile, {
-    through: ArticleMedia,
+    through: {
+      model: ArticleMedia,
+      unique: false,
+    },
     foreignKey: 'articleId',
     otherKey: 'mediaId',
     as: 'mediaFiles',
   });
   MediaFile.belongsToMany(Article, {
-    through: ArticleMedia,
+    through: {
+      model: ArticleMedia,
+      unique: false,
+    },
     foreignKey: 'mediaId',
     otherKey: 'articleId',
     as: 'articles',

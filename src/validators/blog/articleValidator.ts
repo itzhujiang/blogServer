@@ -63,7 +63,7 @@ export const addArticleValidation = [
   body('slug').notEmpty().withMessage('请输入URL友好标识'),
   body('thumbnailCode').optional().isString().withMessage('封面图片代码必须是字符串'),
   body('excerpt').notEmpty().withMessage('请输入文章摘要'),
-  body('articleCode').notEmpty().withMessage('请上传文章内容'),
+  body('content').notEmpty().isString().withMessage('请输入文章内容'),
   body('attachmentList').optional().isArray().withMessage('文章附件必须是数组'),
   body('categories').optional().isArray().withMessage('文章分类必须是数组'),
 ];
@@ -77,7 +77,7 @@ export const updateArticleValidation = [
   body('slug').optional().notEmpty().withMessage('请输入URL友好标识'),
   body('thumbnailCode').optional().isString().withMessage('封面图片代码必须是字符串'),
   body('excerpt').optional().notEmpty().withMessage('请输入文章摘要'),
-  body('articleCode').optional().notEmpty().withMessage('请上传文章内容'),
+  body('content').optional().isString().withMessage('文章内容必须是字符串'),
   body('attachmentList').optional().isArray().withMessage('文章附件必须是数组'),
   body('categories').optional().isArray().withMessage('文章分类必须是数组'),
   body('isUpdateArticle').optional().isBoolean().withMessage('是否更新文章必须是布尔值'),

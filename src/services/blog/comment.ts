@@ -1,6 +1,6 @@
 import { HandlerResult } from '../../utils/getSendResult';
 import { ParameBodyType } from '../../utils/type';
-import { Comment, CommentAttributes } from '../../models/index';
+import { Comment, CommentAttributes, Article, AdminUser } from '../../models/index';
 import { Op, WhereOptions, Order } from 'sequelize';
 
 /**
@@ -35,7 +35,6 @@ type CommentItemType = Pick<
   | 'parentId'
   | 'authorName'
   | 'authorEmail'
-  | 'authorUrl'
   | 'content'
   | 'status'
   | 'likeCount'
@@ -136,7 +135,6 @@ const getCommentsList = async (
         'parentId',
         'authorName',
         'authorEmail',
-        'authorUrl',
         'content',
         'status',
         'likeCount',
@@ -151,7 +149,6 @@ const getCommentsList = async (
       parentId: comment.parentId,
       authorName: comment.authorName,
       authorEmail: comment.authorEmail,
-      authorUrl: comment.authorUrl,
       content: comment.content,
       status: comment.status,
       likeCount: comment.likeCount,
@@ -206,19 +203,121 @@ type DelCommentParamType = {
   id: number;
 };
 
+/**
+ * 删除评论
+ * @param param
+ * @returns
+ */
 const delComment = async (param: DelCommentParamType): Promise<HandlerResult<null>> => {
-  const { id } = param;
-  const comment = await Comment.findByPk(id);
-  if (!comment) {
+  try {
+    const { id } = param;
+    const comment = await Comment.findByPk(id);
+    if (!comment) {
+      return {
+        err: '评论不存在',
+      };
+    }
+    await comment.update({ status: 'trash' });
     return {
       err: '评论不存在',
     };
+  } catch (error) {}
+};
+
+type PublishAuthorCommentParamType = {
+  /** 文章ID */
+  articleId: number;
+  /** 评论内容 */
+  content: string;
+  /** 名称 */
+  name: string;
+  /** 用户id */
+  userId: number;
+};
+/**
+ * 发评论
+ * @param param
+ * @returns
+ */
+const publishAuthorComment = async (
+  param: PublishAuthorCommentParamType
+): Promise<HandlerResult<null>> => {
+  try {
+    const { content, articleId, name, userId } = param;
+    const article = await Article.findByPk(articleId);
+    if (!article) {
+      return {
+        err: '文章不存在',
+      };
+    }
+    const adminUser = await AdminUser.findByPk(userId);
+    if (!adminUser) {
+      return {
+        err: '用户不存在',
+      };
+    }
+    await Comment.create({
+      articleId,
+      parentId: null,
+      authorName: name,
+      content: content,
+      status: 'approved', // 作者评论默认审核通过
+      isAuthor: true, // 标记为作者评论
+      authorEmail: adminUser.email,
+      authorPhone: adminUser.phone,
+    });
+    return {
+      msg: '发布成功',
+      data: null,
+    };
+  } catch (error) {
+    throw new Error('发布评论失败' + error);
   }
-  await comment.update({ status: 'trash' });
-  return {
-    data: null,
-    msg: '评论删除成功',
-  };
+};
+
+type ReplyCommentParamType = {
+  /** 评论ID */
+  id: number;
+  /** 回复内容 */
+  content: string;
+  /** 名称 */
+  name: string;
+  /** 用户id */
+  userId: number;
+};
+
+const replyComment = async (param: ReplyCommentParamType): Promise<HandlerResult<null>> => {
+  try {
+    const { content, id, name, userId } = param;
+    const comment = await Comment.findByPk(id);
+    if (!comment) {
+      return {
+        err: '评论不存在',
+      };
+    }
+    const adminUser = await AdminUser.findByPk(userId);
+    if (!adminUser) {
+      return {
+        err: '用户不存在',
+      };
+    }
+    await Comment.create({
+      articleId: comment.articleId,
+      parentId: comment.id,
+      authorName: name,
+      content: content,
+      status: 'approved', // 回复默认审核通过
+      isAuthor: true, // 标记为作者评论
+      authorEmail: adminUser.email,
+      authorPhone: adminUser.phone,
+    });
+    return {
+      msg: '回复成功',
+      data: null,
+    };
+  } catch (error) {
+    throw new Error('回复评论失败' + error);
+  }
 };
 
 export {
@@ -227,7 +326,11 @@ export {
   CommentsListResponseType,
   ReviewCommentParamType,
   DelCommentParamType,
+  PublishAuthorCommentParamType,
+  ReplyCommentParamType,
   getCommentsList,
   delComment,
   reviewComment,
+  publishAuthorComment,
+  replyComment,
 };
