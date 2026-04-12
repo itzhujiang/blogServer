@@ -26,6 +26,8 @@ export {
   getCommentValidation,
   reviewCommentValidation,
   delCommentValidation,
+  publishAuthorCommentValidation,
+  replyCommentValidation,
 } from './blog/commentValidator';
 export { aiLoginValidation } from './blog/aiUserValidator';
 export { sendPhoneCodeValidation } from './tools/codeValidator';

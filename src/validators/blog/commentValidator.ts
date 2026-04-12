@@ -1,4 +1,4 @@
-import { query } from 'express-validator';
+import { query, body } from 'express-validator';
 
 // 获取评论验证规则
 export const getCommentValidation = [
@@ -65,18 +65,52 @@ export const getCommentValidation = [
 ];
 
 export const reviewCommentValidation = [
-  query('id')
+  body('id')
     .notEmpty()
     .withMessage('评论ID不能为空')
     .isInt({ min: 1 })
     .withMessage('评论ID必须是大于0的整数')
     .toInt(),
-  query('status')
+  body('status')
     .notEmpty()
     .withMessage('状态不能为空')
     .isIn(['approved', 'spam'])
     .withMessage('状态必须是 approved 或 spam'),
 ];
 
-export const delCommentValidation = [query('id').notEmpty().withMessage('评论ID不能为空').isInt({ min: 1 }).withMessage('评论ID必须是大于0的整数').toInt(),
+export const delCommentValidation = [
+  query('id')
+    .notEmpty()
+    .withMessage('评论ID不能为空')
+    .isInt({ min: 1 })
+    .withMessage('评论ID必须是大于0的整数')
+    .toInt(),
+];
+
+export const publishAuthorCommentValidation = [
+  body('content')
+    .notEmpty()
+    .withMessage('评论内容不能为空')
+    .isString()
+    .withMessage('评论内容必须是字符串'),
+  body('articleId')
+    .notEmpty()
+    .withMessage('文章ID不能为空')
+    .isInt({ min: 1 })
+    .withMessage('文章ID必须是大于0的整数')
+    .toInt(),
+];
+
+export const replyCommentValidation = [
+  body('id')
+    .notEmpty()
+    .withMessage('评论ID不能为空')
+    .isInt({ min: 1 })
+    .withMessage('评论ID必须是大于0的整数')
+    .toInt(),
+  body('content')
+    .notEmpty()
+    .withMessage('回复内容不能为空')
+    .isString()
+    .withMessage('回复内容必须是字符串'),
 ];
