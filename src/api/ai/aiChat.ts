@@ -10,12 +10,15 @@ import {
   getMessages,
   SessionListRequsetType,
   ChatRequestType,
+  ToolResultResponseType,
+  toolResult,
 } from '../../services/ai/aiChat';
 import {
   agUiChatValidation,
   handleValidationErrors,
   messagesValidation,
   sessionListValidation,
+  toolResultValidation,
 } from '../../validators';
 import { asyncHandler } from '../../utils/getSendResult';
 
@@ -26,6 +29,14 @@ router.post(
   [...agUiChatValidation, handleValidationErrors],
   asyncHandler<ChatRequestType, null, 'post'>(async (req, res) => {
     await chat(req, res);
+  })
+);
+
+router.post(
+  '/toolResult',
+  [...toolResultValidation, handleValidationErrors],
+  asyncHandler<ToolResultResponseType, null, 'post'>(async req => {
+    return await toolResult(req);
   })
 );
 

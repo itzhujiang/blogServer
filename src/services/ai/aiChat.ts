@@ -1,5 +1,6 @@
 import { ParameBodyType, RequestType, ResponseType } from '../../utils/type';
 import { agui } from '../../ai/agreement';
+// import { a2ui } from '../../ai/agreement/a2ui';
 import { HandlerResult } from '../../utils/getSendResult';
 import {
   AiChatSessions,
@@ -8,56 +9,169 @@ import {
   AiChatMessageTypeLiteral,
 } from '../../models';
 import { RunAgentInput } from '@ag-ui/core';
-import { v4 as uuidv4 } from 'uuid';
 import { agUiInputToUnifyInput, unifyInputToLangChainInput } from '@/ai/utils/adapters';
-import { getWeatherAgent } from '@/ai/agent';
-
+import { createMainAgent } from '@/ai/agent';
+import { v4 as uuidv4 } from 'uuid';
+import { toolExecutionManager } from '@/ai/utils/toolExecutionManager';
 type ChatRequestType = RunAgentInput;
 
 const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType) => {
-  console.log(req.ip);
   // const { id } = req.aiUser!;
-  const uuid = uuidv4();
+  // const uuid = uuidv4();
   try {
     const reasoningId = uuidv4();
     const activityId = uuidv4();
-    agui.initSSE(res);
-    agui.runStarted(res, req.body.threadId, req.body.runId);
     const langChainInput = unifyInputToLangChainInput(agUiInputToUnifyInput(req.body));
-    console.log('langChainInput', langChainInput);
+    // langChainInput.tools
+    const run = createMainAgent();
+    const runResult = await run({
+      thread_id: req.body.threadId,
+      message: langChainInput,
+      ip: req.aiUser?.id?.toString() ?? '',
+      run_id: req.body.runId,
+    });
 
-    agui.reasoningStart(res, reasoningId);
-    agui.activitySnapshot(
-      res,
-      'THINKING',
-      {
-        status: 'pending',
-        content: 'AI 正在思考中',
-      },
-      activityId
-    );
-    const run = getWeatherAgent();
-    const lastMessage = langChainInput.messages[langChainInput.messages.length - 1];
-    const runResult = await run(
-      req.body.threadId,
-      lastMessage.content as string,
-      req.aiUser?.id?.toString() ?? ''
-    );
-    agui.activityDelta(res, 'THINKING', activityId, [
-      { op: 'replace', path: '/status', value: 'success' },
-      { op: 'replace', path: '/content', value: 'AI 思考完成' },
-    ]);
-    console.log('runResult', runResult);
-    agui.reasoningEnd(res, reasoningId);
-    agui.textMessageStart(res, uuid);
-    agui.textMessageContent(res, uuid, runResult as string);
-    agui.textMessageEnd(res, uuid);
-    agui.end(res);
-
+    let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+    for await (const evt of runResult) {
+      switch (evt.event) {
+        case 'modelStart':
+          agui.initSSE(res);
+          agui.runStarted(res, {
+            runId: evt.runId,
+            threadId: evt.threadId,
+          });
+          agui.reasoningStart(res, {
+            messageId: reasoningId,
+          });
+          agui.activitySnapshot(res, {
+            messageId: activityId,
+            activityType: 'THINKING',
+            content: {
+              status: 'pending',
+              content: 'AI 正在思考中',
+            },
+          });
+          keepaliveTimer = setInterval(() => agui.keepalive(res), 15000);
+          break;
+        case 'modelEnd':
+          if (keepaliveTimer) {
+            clearInterval(keepaliveTimer);
+            keepaliveTimer = null;
+          }
+          agui.runFinished(res, {
+            runId: evt.runId,
+            threadId: evt.threadId,
+          });
+          agui.end(res);
+          break;
+        case 'messageStart':
+          // agui.activityDelta(res, 'THINKING', activityId, [
+          //   { op: 'replace', path: '/status', value: 'success' },
+          //   { op: 'replace', path: '/content', value: 'AI 思考完成' },
+          // ]);
+          agui.activityDelta(res, {
+            messageId: activityId,
+            activityType: 'THINKING',
+            patch: [
+              { op: 'replace', path: '/status', value: 'pending' },
+              { op: 'replace', path: '/content', value: 'AI开始输出' },
+            ],
+          });
+          agui.reasoningEnd(res, {
+            messageId: reasoningId,
+          });
+          agui.textMessageStart(res, {
+            messageId: evt.messageId,
+          });
+          break;
+        case 'messageChunk':
+          agui.textMessageContent(res, {
+            messageId: evt.messageId,
+            delta: evt.message,
+          });
+          break;
+        case 'messageEnd':
+          agui.textMessageEnd(res, {
+            messageId: evt.messageId,
+          });
+          agui.activityDelta(res, {
+            messageId: activityId,
+            activityType: 'THINKING',
+            patch: [
+              { op: 'replace', path: '/status', value: 'success' },
+              { op: 'replace', path: '/content', value: 'AI输出完成' },
+            ],
+          });
+          break;
+        case 'a2uiMessage': {
+          const id = 'custom' + uuidv4();
+          agui.custom(res, {
+            name: 'a2ui',
+            value: evt.value,
+            customId: id,
+          });
+          break;
+        }
+        case 'toolStart':
+          agui.toolCallStart(res, {
+            toolCallId: evt.toolCallId,
+            toolCallArgs: evt.toolCallArgs,
+            toolCallName: evt.toolCallName,
+            toolType: evt.toolType,
+          });
+          agui.activityDelta(res, {
+            messageId: activityId,
+            activityType: 'THINKING',
+            patch: [
+              { op: 'replace', path: '/status', value: 'pending' },
+              { op: 'replace', path: '/content', value: `调用${evt.toolCallName}工具中` },
+            ],
+          });
+          break;
+        case 'toolEnd':
+          agui.toolCallEnd(res, {
+            toolCallId: evt.toolCallId,
+          });
+          agui.activityDelta(res, {
+            messageId: activityId,
+            activityType: 'THINKING',
+            patch: [
+              { op: 'replace', path: '/status', value: 'success' },
+              { op: 'replace', path: '/content', value: `调用工具完成` },
+            ],
+          });
+          break;
+      }
+    }
     return null;
   } catch (error) {
     console.log(error);
     return null;
+  }
+};
+
+type ToolResultResponseType = {
+  /** 工具id */
+  toolId: string;
+  /** 工具返回结果 */
+  toolResult: string;
+};
+
+const toolResult = async (
+  req: RequestType<ToolResultResponseType, 'post'>
+): Promise<HandlerResult<null>> => {
+  const toolId = req.body.toolId;
+  const toolRes = req.body.toolResult;
+  if (toolExecutionManager.hasPending(toolId)) {
+    toolExecutionManager.submitResult(toolId, toolRes);
+    return {
+      msg: '成功',
+      data: null,
+    };
+  } else {
+    return {
+      err: '失败，未找到对应的工具id',
+    };
   }
 };
 
@@ -200,7 +314,9 @@ export {
   MessagesRequsetType,
   MessagesResponseType,
   SessionListRequsetType,
+  ToolResultResponseType,
   chat,
   getSessionList,
   getMessages,
+  toolResult,
 };

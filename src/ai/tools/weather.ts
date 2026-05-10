@@ -31,6 +31,8 @@ export const getWeather = tool(
       city: response.city, // 城市
       weather: response.weather, // 天气现象
       temperature: response.temperature, // 温度，单位：摄氏度
+      windDirection: response.wind_direction, // 风向
+      windPower: response.wind_power, //  风力等级
     };
   },
   {

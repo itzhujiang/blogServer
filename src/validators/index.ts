@@ -36,6 +36,7 @@ export {
   sendMessageValidation,
   messagesValidation,
   sessionListValidation,
+  toolResultValidation,
 } from './ai/aiChatValidator';
 
 // 验证错误处理中间件

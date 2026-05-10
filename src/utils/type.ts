@@ -31,7 +31,7 @@ export type ResBodyType<T = never> = {
 
 export type ResponseType<T = never> = Response<ResBodyType<T>>;
 
-export type ParameBodyType<T = {}> = {
+export type ParameBodyType<T = object> = {
   page?: number;
   size?: number;
 } & T & {
@@ -40,7 +40,7 @@ export type ParameBodyType<T = {}> = {
   };
 
 // POST/PUT/PATCH 请求，类型在请求体(第三个泛型)
-export type RequestBodyType<T = {}> = Request<
+export type RequestBodyType<T = object> = Request<
   Record<string, unknown>,
   unknown,
   ParameBodyType<T>
@@ -50,7 +50,7 @@ export type RequestBodyType<T = {}> = Request<
 };
 
 // GET/DELETE 请求，类型在查询参数(第四个泛型)
-export type RequestQueryType<T = {}> = Request<
+export type RequestQueryType<T = object> = Request<
   Record<string, unknown>,
   unknown,
   unknown,

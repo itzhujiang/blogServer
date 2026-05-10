@@ -47,6 +47,9 @@ const aiAuthOnlyApi = [
   {
     path: '/api/ai/ai-chat/getMessages',
   },
+  {
+    path: '/api/ai/ai-chat/toolResult',
+  },
 ];
 
 /**

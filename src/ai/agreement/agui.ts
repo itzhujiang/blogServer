@@ -1,5 +1,21 @@
-import type { Message, BaseEvent, RunAgentInput } from '@ag-ui/core';
-import { EventType } from '@ag-ui/core';
+import type {
+  ActivityDeltaEvent,
+  ActivitySnapshotEvent,
+  Message,
+  ReasoningEndEvent,
+  ReasoningStartEvent,
+  RunAgentInput,
+  RunErrorEvent,
+  RunFinishedEvent,
+  RunStartedEvent,
+  TextMessageChunkEvent,
+  TextMessageEndEvent,
+  TextMessageStartEvent,
+  ToolCallEndEvent,
+  ToolCallStartEvent,
+  CustomEvent,
+} from '@ag-ui/core';
+import { EventType, AGUIEventOf } from '@ag-ui/core';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseType } from '../../utils/type';
 
@@ -9,7 +25,7 @@ class AgUi {
    * @param res
    * @param event
    */
-  private writeEvent(res: ResponseType, event: BaseEvent) {
+  private writeEvent<T extends EventType>(res: ResponseType, event: AGUIEventOf<T>) {
     const payload = {
       ...event,
       timestamp: event.timestamp ?? Date.now(),
@@ -33,131 +49,147 @@ class AgUi {
   }
   /**
    * 运行开始
-   * @param res
-   * @param threadId 线程id(通过sessionId)
-   * @param runId 流程的id
    */
-  runStarted(res: ResponseType, threadId: string, runId: string) {
-    this.writeEvent(res, {
+  runStarted(res: ResponseType, data: Omit<RunStartedEvent, 'type'>) {
+    this.writeEvent<EventType.RUN_STARTED>(res, {
+      ...data,
       type: EventType.RUN_STARTED,
-      threadId,
-      runId,
-    } as BaseEvent);
+      threadId: data.threadId as string,
+      runId: data.runId as string,
+    });
   }
 
   /**
    * 文本消息开始
-   * @param res
-   * @param messageId 消息id
    */
-  textMessageStart(res: ResponseType, messageId: string) {
-    this.writeEvent(res, {
+  textMessageStart(res: ResponseType, data: Omit<TextMessageStartEvent, 'type' | 'role'>) {
+    this.writeEvent<EventType.TEXT_MESSAGE_START>(res, {
+      ...data,
       type: EventType.TEXT_MESSAGE_START,
-      messageId,
+      messageId: data.messageId as string,
       role: 'assistant',
-    } as BaseEvent);
+    });
   }
 
   /**
    * 文本消息内容
-   * @param res
-   * @param messageId 消息id
-   * @param delta 文本增量
    */
-  textMessageContent(res: ResponseType, messageId: string, delta: string) {
-    this.writeEvent(res, {
+  textMessageContent(res: ResponseType, data: Omit<TextMessageChunkEvent, 'type'>) {
+    this.writeEvent<EventType.TEXT_MESSAGE_CONTENT>(res, {
+      ...data,
+      messageId: data.messageId as string,
+      delta: data.delta as string,
       type: EventType.TEXT_MESSAGE_CONTENT,
-      messageId,
-      delta,
-    } as BaseEvent);
+    });
   }
 
   /**
    * 文本消息结束
-   * @param res
-   * @param messageId 消息id
    */
-  textMessageEnd(res: ResponseType, messageId: string) {
-    this.writeEvent(res, {
+  textMessageEnd(res: ResponseType, data: Omit<TextMessageEndEvent, 'type'>) {
+    this.writeEvent<EventType.TEXT_MESSAGE_END>(res, {
+      ...data,
       type: EventType.TEXT_MESSAGE_END,
-      messageId,
-    } as BaseEvent);
+      messageId: data.messageId as string,
+    });
+  }
+  /**
+   *工具调用开始
+   */
+  toolCallStart(
+    res: ResponseType,
+    data: Omit<ToolCallStartEvent, 'type'> & { toolCallArgs?: string }
+  ) {
+    this.writeEvent<EventType.TOOL_CALL_START>(res, {
+      ...data,
+      type: EventType.TOOL_CALL_START,
+      toolCallId: data.toolCallId as string,
+      toolCallName: data.toolCallName as string,
+      toolCallArgs: data.toolCallArgs || '',
+    });
+  }
+
+  /**
+   * 工具调用结束
+   */
+  toolCallEnd(res: ResponseType, data: Omit<ToolCallEndEvent, 'type'>) {
+    this.writeEvent<EventType.TOOL_CALL_END>(res, {
+      ...data,
+      type: EventType.TOOL_CALL_END,
+      toolCallId: data.toolCallId as string,
+    });
   }
 
   /**
    * 思考开始
-   * @param res
-   * @param messageId
    */
-  reasoningStart(res: ResponseType, messageId: string) {
-    this.writeEvent(res, {
+  reasoningStart(res: ResponseType, data: Omit<ReasoningStartEvent, 'type' | 'role'>) {
+    this.writeEvent<EventType.REASONING_START>(res, {
       role: 'assistant',
       type: EventType.REASONING_START,
-      messageId,
+      messageId: data.messageId as string,
     });
   }
 
-  reasoningEnd(res: ResponseType, messageId: string) {
-    this.writeEvent(res, {
+  reasoningEnd(res: ResponseType, data: Omit<ReasoningEndEvent, 'type' | 'role'>) {
+    this.writeEvent<EventType.REASONING_END>(res, {
       role: 'assistant',
       type: EventType.REASONING_END,
-      messageId,
+      messageId: data.messageId as string,
     });
   }
 
   /**
    * 通知前端ui显示活动的
-   * @param res
-   * @param activityType 活动类型
-   * @param content 内容对象
-   * @param messageId 信息id
-   * @param replace 是否替换同 ID 的已有 activity
    */
-  activitySnapshot(
-    res: ResponseType,
-    activityType: string,
-    content: Record<string, unknown>,
-    messageId: string,
-    replace: boolean = false
-  ) {
+  activitySnapshot(res: ResponseType, data: Omit<ActivitySnapshotEvent, 'type' | 'role'>) {
     this.writeEvent(res, {
+      ...data,
       type: EventType.ACTIVITY_SNAPSHOT,
       role: 'activity',
-      activityType,
-      content,
-      messageId,
-      replace,
+      messageId: data.messageId as string,
+      activityType: data.activityType as string,
+      content: data.content as Record<string, unknown>,
+      replace: (data.replace as boolean) ?? false,
     });
   }
 
   /**
    * 通知前端更新指定活动
-   * @param res
-   * @param activityType
-   * @param messageId
-   * @param patch
    */
-  activityDelta(res: ResponseType, activityType: string, messageId: string, patch: any[]) {
+  activityDelta(res: ResponseType, data: Omit<ActivityDeltaEvent, 'type' | 'role'>) {
     this.writeEvent(res, {
+      ...data,
       type: EventType.ACTIVITY_DELTA,
-      messageId,
-      activityType,
-      patch, // RFC 6902 JSON Patch operations
+      role: 'activity',
+      messageId: data.messageId as string,
+      activityType: data.activityType as string,
+      patch: data.patch as Array<{ op: string; path: string; value: unknown }>,
+    });
+  }
+
+  custom(
+    res: ResponseType,
+    data: Omit<CustomEvent, 'type' | 'name'> & {
+      name: 'a2ui';
+    }
+  ) {
+    this.writeEvent(res, {
+      type: EventType.CUSTOM,
+      ...data,
     });
   }
 
   /**
    * 运行完成
-   * @param res
-   * @param threadId 线程id
-   * @param runId 流程id
    */
-  runFinished(res: ResponseType, threadId: string, runId: string) {
+  runFinished(res: ResponseType, data: Omit<RunFinishedEvent, 'type'>) {
     this.writeEvent(res, {
+      ...data,
       type: EventType.RUN_FINISHED,
-      threadId,
-      runId,
-    } as BaseEvent);
+      threadId: data.threadId as string,
+      runId: data.runId as string,
+    });
   }
 
   /**
@@ -167,13 +199,20 @@ class AgUi {
    * @param threadId 线程id
    * @param runId 流程id
    */
-  runError(res: ResponseType, message: string, threadId?: string, runId?: string) {
+  runError(res: ResponseType, data: Omit<RunErrorEvent, 'type'>) {
     this.writeEvent(res, {
+      ...data,
       type: EventType.RUN_ERROR,
-      message,
-      threadId,
-      runId,
-    } as BaseEvent);
+      message: data.message as string,
+    });
+  }
+
+  /**
+   * 发送心跳包，防止长时间无数据导致 SSE 连接超时
+   * @param res
+   */
+  keepalive(res: ResponseType) {
+    res.write(': keepalive\n\n');
   }
 
   /**

@@ -1,16 +1,16 @@
 // 位置的llm工具
 
-import { RunnableConfig } from '@langchain/core/runnables';
+// import { RunnableConfig } from '@langchain/core/runnables';
 import { tool } from '@langchain/core/tools';
-import { z } from 'zod';
+// import { z } from 'zod';
 import { uapiClient } from '../../utils/uapis';
 
 // 获取ip地址位置信息-llm工具
 export const getIpPosition = tool(
-  async (_input: Record<string, never>, config?: RunnableConfig) => {
-    const ip = (config?.configurable?.ip as string | undefined) ?? '';
+  async () => {
+    // console.log(ip);
     const payload = {
-      ip,
+      ip: '123.57.247.141',
     };
     const response = await uapiClient.network.getNetworkIpinfo(payload);
     if ('code' in response) {
@@ -27,6 +27,8 @@ export const getIpPosition = tool(
   {
     name: 'getIpPosition',
     description: '获取当前用户位置信息',
-    schema: z.object({}),
+    // schema: z.object({
+    //   ip: z.string().describe('用户的ip地址'),
+    // }),
   }
 );
