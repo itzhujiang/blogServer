@@ -49,8 +49,6 @@ function shouldContinue(state: typeof AgentStateAnnotation.State) {
  * 工具执行完后，根据 state.next 回到对应的 agent
  */
 function routeAfterTool(state: typeof AgentStateAnnotation.State) {
-  console.log('进入了111', state.next);
-
   return state.next;
 }
 
@@ -92,7 +90,7 @@ export const createMainAgent = () => {
         ip,
         run_id,
         metadata: {
-          tools: message,
+          tools: message.tools,
         },
       },
     };

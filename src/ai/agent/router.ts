@@ -13,7 +13,10 @@ export async function routerNode(state: typeof AgentStateAnnotation.State) {
     routerSchema,
     { method: 'functionCalling' }
   );
-
+  let msg = [...state.messages];
+  if (msg.length > 10) {
+    msg = msg.slice(-10); // 如果消息列表过长，只保留最后10条消息，避免超过模型输入限制
+  }
   const result = await llm.invoke([
     {
       role: 'system',
@@ -22,9 +25,9 @@ export async function routerNode(state: typeof AgentStateAnnotation.State) {
                 - imageAgent：图片生成及其图片提示词完善问题
                 - generalAgent：问候、闲聊、通用问题及其他所有情况`,
     },
-    ...state.messages,
+    ...msg,
   ]);
-  return { next: result.next };
+  return { next: result.next || 'generalAgent' };
 }
 
 export function routeTo(state: typeof AgentStateAnnotation.State): string {

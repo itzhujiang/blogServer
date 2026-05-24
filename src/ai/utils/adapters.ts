@@ -12,7 +12,6 @@ import { StreamEvent } from '@langchain/core/tracers/log_stream';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
 import { ClientTool, DynamicStructuredTool } from '@langchain/core/tools';
 import { toolExecutionManager } from './toolExecutionManager';
-import { defaultLogger } from '@/utils/logger';
 import { A2UI_MARK, CALL_MODEL_WITH_RESULT } from './constant';
 
 // langChain输入类型
@@ -80,8 +79,13 @@ type UnifyOutputType =
       messageId: string;
     }
   | {
-      event: 'messageStart' | 'messageEnd';
+      event: 'messageStart';
       messageId: string;
+    }
+  | {
+      event: 'messageEnd';
+      messageId: string;
+      content: string;
     }
   | {
       event: 'a2uiMessage';
@@ -183,7 +187,6 @@ export async function* langChainStreamEventsOutputToUnifyOutput(
   langChainOutput: IterableReadableStream<StreamEvent>
 ): AsyncGenerator<UnifyOutputType, void, unknown> {
   for await (const event of langChainOutput) {
-    defaultLogger.info(event);
     const eventName = event.event;
     const eventInitiator = event.name;
     const metadata = event?.metadata || {};
@@ -277,12 +280,10 @@ export async function* langChainStreamEventsOutputToUnifyOutput(
       if (messageId && messageIdSet.has(messageId)) {
         messageIdSet.delete(messageId);
         chatModelRunMessageIdMap.delete(event.run_id);
-
         // 检查完整消息内容是否包含 A2UI 分隔符
         const fullContent = typeof msg?.content === 'string' ? msg.content : '';
-        const A2UI_DELIMITER = '---a2ui_JSON---';
-        if (fullContent.includes(A2UI_DELIMITER)) {
-          const jsonString = fullContent.split(A2UI_DELIMITER)[1]?.trim() ?? '';
+        if (fullContent.includes(A2UI_MARK)) {
+          const jsonString = fullContent.split(A2UI_MARK)[1]?.trim() ?? '';
           try {
             const parsed = JSON.parse(jsonString);
             if (Array.isArray(parsed)) {
@@ -292,10 +293,10 @@ export async function* langChainStreamEventsOutputToUnifyOutput(
             // JSON 解析失败，忽略，正常走 messageEnd
           }
         }
-
         yield {
           event: 'messageEnd',
           messageId,
+          content: fullContent,
         };
       }
     }

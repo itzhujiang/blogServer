@@ -83,7 +83,6 @@ export function initAIArtworkModel(sequelize: Sequelize): typeof AIArtwork {
       slug: {
         type: DataTypes.STRING(255),
         allowNull: false,
-        unique: true,
         comment: 'URL标识',
       },
       description: {
@@ -130,11 +129,11 @@ export function initAIArtworkModel(sequelize: Sequelize): typeof AIArtwork {
         defaultValue: 0,
         comment: '排序权重',
       },
+      // 发布状态：draft=草稿, published=已发布
       status: {
         type: DataTypes.ENUM('draft', 'published'),
         allowNull: false,
         defaultValue: 'published',
-        comment: '发布状态 (draft=草稿, published=已发布)',
       },
       createdAt: {
         type: DataTypes.BIGINT,

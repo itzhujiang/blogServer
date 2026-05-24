@@ -82,7 +82,6 @@ export function initArticleModel(sequelize: Sequelize): typeof Article {
       slug: {
         type: DataTypes.STRING(255),
         allowNull: false,
-        unique: true,
         comment: 'URL友好标识',
       },
       content: {
@@ -114,11 +113,11 @@ export function initArticleModel(sequelize: Sequelize): typeof Article {
         defaultValue: 0,
         comment: '浏览次数',
       },
+      // 发布状态：draft=草稿, published=已发布, archived=已归档
       status: {
         type: DataTypes.ENUM('draft', 'published', 'archived'),
         allowNull: false,
         defaultValue: 'published',
-        comment: '发布状态 (draft=草稿, published=已发布, archived=已归档)',
       },
       publishedAt: {
         type: DataTypes.BIGINT,

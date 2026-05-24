@@ -1,9 +1,10 @@
 import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 
-
 export interface AiChatSessionsAttributes {
   /** ID */
   id: number;
+  /** 会话id */
+  session_id: string;
   /** 用户id */
   user_id: number;
   /** 标题 */
@@ -23,19 +24,23 @@ export interface AiChatSessionsAttributes {
 /** 创建时可选字段 */
 export type AiChatSessionsCreationAttributes = Optional<
   AiChatSessionsAttributes,
-   'id' | 'last_message_preview' | 'last_message_at' | 'createdAt' | 'updatedAt' | 'deletedAt'
+  'id' | 'last_message_preview' | 'last_message_at' | 'createdAt' | 'updatedAt' | 'deletedAt'
 >;
 
 // 模型类
-export class AiChatSessions extends Model<AiChatSessionsAttributes, AiChatSessionsCreationAttributes> implements AiChatSessionsAttributes {
-    declare id: number;
-    declare user_id: number;
-    declare title: string;
-    declare last_message_preview: string;
-    declare last_message_at: number;
-    declare createdAt: number;
-    declare updatedAt: number;
-    declare deletedAt: number;
+export class AiChatSessions
+  extends Model<AiChatSessionsAttributes, AiChatSessionsCreationAttributes>
+  implements AiChatSessionsAttributes
+{
+  declare id: number;
+  declare session_id: string;
+  declare user_id: number;
+  declare title: string;
+  declare last_message_preview: string;
+  declare last_message_at: number;
+  declare createdAt: number;
+  declare updatedAt: number;
+  declare deletedAt: number;
 }
 
 export function initAiChatSessionsModel(sequelize: Sequelize): typeof AiChatSessions {
@@ -46,6 +51,11 @@ export function initAiChatSessionsModel(sequelize: Sequelize): typeof AiChatSess
         autoIncrement: true,
         primaryKey: true,
         comment: 'ID',
+      },
+      session_id: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        comment: '会话id，前端唯一标识',
       },
       user_id: {
         type: DataTypes.INTEGER,
@@ -69,7 +79,8 @@ export function initAiChatSessionsModel(sequelize: Sequelize): typeof AiChatSess
       },
       last_message_at: {
         type: DataTypes.BIGINT,
-        allowNull: true,
+        allowNull: false,
+        defaultValue: () => Date.now(),
         comment: '最后一条实际消息的时间，用于会话排序（毫秒级Unix时间戳）',
       },
       createdAt: {
@@ -88,7 +99,7 @@ export function initAiChatSessionsModel(sequelize: Sequelize): typeof AiChatSess
         type: DataTypes.BIGINT,
         allowNull: true,
         comment: '会话删除时间（软删除，毫秒级Unix时间戳）',
-      }
+      },
     },
     {
       sequelize,
@@ -102,10 +113,11 @@ export function initAiChatSessionsModel(sequelize: Sequelize): typeof AiChatSess
           const now = Date.now();
           instance.createdAt = now;
           instance.updatedAt = now;
-
+          instance.last_message_at = now;
         },
         beforeUpdate: (instance: AiChatSessions) => {
           instance.updatedAt = Date.now();
+          instance.last_message_at = Date.now();
         },
         beforeRestore: (instance: AiChatSessions) => {
           // 恢复时清除 deletedAt
@@ -114,22 +126,19 @@ export function initAiChatSessionsModel(sequelize: Sequelize): typeof AiChatSess
       },
       indexes: [
         {
+          unique: true,
+          fields: ['session_id'],
+        },
+        {
           name: 'idx_ai_chat_sessions_user_deleted_last_message',
-          fields: [
-            'user_id',
-            'deleted_at',
-            { name: 'last_message_at', order: 'DESC' },
-          ],
+          fields: ['user_id', 'deleted_at', { name: 'last_message_at', order: 'DESC' }],
         },
         {
           name: 'idx_ai_chat_sessions_user_created_at',
-          fields: [
-            'user_id',
-            { name: 'created_at', order: 'DESC' },
-          ],
+          fields: ['user_id', { name: 'created_at', order: 'DESC' }],
         },
-      ]
+      ],
     }
-  )
-  return AiChatSessions
+  );
+  return AiChatSessions;
 }

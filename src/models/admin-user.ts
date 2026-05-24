@@ -72,13 +72,11 @@ export function initAdminUserModel(sequelize: Sequelize): typeof AdminUser {
       username: {
         type: DataTypes.STRING(100),
         allowNull: false,
-        unique: true,
         comment: '登录用户名',
       },
       email: {
         type: DataTypes.STRING(255),
         allowNull: false,
-        unique: true,
         comment: '邮箱地址',
       },
       displayName: {
@@ -101,11 +99,11 @@ export function initAdminUserModel(sequelize: Sequelize): typeof AdminUser {
         allowNull: false,
         comment: '密码盐值',
       },
+      // 账户状态：active=活跃, inactive=停用, locked=锁定
       status: {
         type: DataTypes.ENUM('active', 'inactive', 'locked'),
         allowNull: false,
         defaultValue: 'active',
-        comment: '账户状态 (active=活跃, inactive=停用, locked=锁定)',
       },
       phone: {
         type: DataTypes.STRING(20),

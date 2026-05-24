@@ -1,6 +1,7 @@
 export * from './weather';
 export * from './position';
 export * from './image';
+export * from './memory';
 
 // 需要进行权限申请的工具
 export const permissionTool = ['getIpPosition'];

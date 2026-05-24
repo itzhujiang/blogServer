@@ -47,7 +47,6 @@ export function initSiteSettingModel(sequelize: Sequelize): typeof SiteSetting {
       settingKey: {
         type: DataTypes.STRING(100),
         allowNull: false,
-        unique: true,
         comment: '配置键名',
       },
       settingValue: {
@@ -55,11 +54,11 @@ export function initSiteSettingModel(sequelize: Sequelize): typeof SiteSetting {
         allowNull: true,
         comment: '配置值',
       },
+      // 值类型：string=字符串, number=数字, boolean=布尔, json=JSON
       settingType: {
         type: DataTypes.ENUM('string', 'number', 'boolean', 'json'),
         allowNull: false,
         defaultValue: 'string',
-        comment: '值类型 (string=字符串, number=数字, boolean=布尔, json=JSON)',
       },
       description: {
         type: DataTypes.TEXT,

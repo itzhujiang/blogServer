@@ -52,11 +52,11 @@ export function initArtworkMediaModel(sequelize: Sequelize): typeof ArtworkMedia
         allowNull: false,
         comment: '媒体文件ID',
       },
+      // 使用类型：main=主展示图, thumbnail=缩略图, process=创作过程图, variant=变体图
       usageType: {
         type: DataTypes.ENUM('main', 'thumbnail', 'process', 'variant'),
         allowNull: false,
         defaultValue: 'main',
-        comment: '使用类型 (main=主展示图, thumbnail=缩略图, process=创作过程图, variant=变体图)',
       },
       sortOrder: {
         type: DataTypes.INTEGER,

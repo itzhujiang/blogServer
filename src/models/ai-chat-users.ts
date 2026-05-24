@@ -54,14 +54,13 @@ export function initAiChatUsersModel(sequelize: Sequelize): typeof AiChatUsers {
       phone: {
         type: DataTypes.STRING(20),
         allowNull: true,
-        unique: true,
         comment: '手机号',
       },
+      // 用户状态：active=正常, blocked=封禁
       status: {
         type: DataTypes.ENUM('active', 'blocked'),
         allowNull: true,
         defaultValue: 'active',
-        comment: '用户状态（active/blocked）',
       },
       last_verified_at: {
         type: DataTypes.BIGINT,

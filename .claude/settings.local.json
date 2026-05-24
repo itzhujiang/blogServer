@@ -2,5 +2,10 @@
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "context7"
-  ]
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(python:*)"
+    ]
+  }
 }

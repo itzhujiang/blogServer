@@ -113,11 +113,11 @@ export function initCommentModel(sequelize: Sequelize): typeof Comment {
         allowNull: false,
         comment: '评论内容',
       },
+      // 审核状态：pending=待审核, approved=已通过, spam=垃圾评论, trash=已删除
       status: {
         type: DataTypes.ENUM('pending', 'approved', 'spam', 'trash'),
         allowNull: false,
         defaultValue: 'pending',
-        comment: '审核状态 (pending=待审核, approved=已通过, spam=垃圾评论, trash=已删除)',
       },
       likeCount: {
         type: DataTypes.INTEGER,

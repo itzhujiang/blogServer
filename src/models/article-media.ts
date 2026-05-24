@@ -52,11 +52,11 @@ export function initArticleMediaModel(sequelize: Sequelize): typeof ArticleMedia
         allowNull: false,
         comment: '媒体文件ID',
       },
+      // 使用类型：thumbnail=缩略图, attachment=附件图, content=内容图
       usageType: {
         type: DataTypes.ENUM('thumbnail', 'attachment', 'content'),
         allowNull: false,
         defaultValue: 'attachment',
-        comment: '使用类型 (thumbnail=缩略图, attachment=附件图)',
       },
       sortOrder: {
         type: DataTypes.INTEGER,

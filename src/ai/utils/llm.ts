@@ -17,6 +17,8 @@ type OpenAiLLMOptions = {
   temperature?: number;
   /** 思考模式 */
   enableThinking?: boolean;
+  /** 详细日志 */
+  verbose?: boolean;
 };
 
 const envOpenAiLLMValidate = () => {
@@ -34,6 +36,7 @@ const envOpenAiLLMValidate = () => {
 const defaultOpenAiLLMOptions: OpenAiLLMOptions = {
   temperature: 0.7,
   enableThinking: true,
+  verbose: false,
 };
 /**
  * 创建一个openAI格式的LLM
@@ -42,12 +45,16 @@ const defaultOpenAiLLMOptions: OpenAiLLMOptions = {
  */
 const createOpenAiLLM = (options?: OpenAiLLMOptions) => {
   envOpenAiLLMValidate();
-  const { temperature = 0.7, enableThinking = true } = options || defaultOpenAiLLMOptions;
+  const {
+    temperature = 0.7,
+    enableThinking = true,
+    verbose = false,
+  } = options || defaultOpenAiLLMOptions;
   const llm = new ChatOpenAI({
     temperature,
     model: process.env.AI_DIALOGUE_MODEL,
     streaming: true,
-    // verbose: true, // 启用详细日志
+    verbose: verbose, // 启用详细日志
     configuration: {
       baseURL: process.env.AI_BASE_URL,
     },

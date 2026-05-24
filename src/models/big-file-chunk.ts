@@ -72,11 +72,11 @@ export function initBigFileChunkModel(sequelize: Sequelize): typeof BigFileChunk
         allowNull: false,
         comment: '分片存储路径',
       },
+      // 上传状态：pending=待上传, uploaded=已上传
       status: {
         type: DataTypes.ENUM('pending', 'uploaded'),
         allowNull: false,
         defaultValue: 'pending',
-        comment: '上传状态',
       },
       uploadedAt: {
         type: DataTypes.BIGINT,

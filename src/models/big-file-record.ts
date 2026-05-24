@@ -66,7 +66,6 @@ export function initBigFileRecordModel(sequelize: Sequelize): typeof BigFileReco
       identifier: {
         type: DataTypes.STRING(36),
         allowNull: false,
-        unique: true,
         comment: '文件唯一标识',
       },
       originalName: {
@@ -94,11 +93,11 @@ export function initBigFileRecordModel(sequelize: Sequelize): typeof BigFileReco
         allowNull: false,
         comment: 'MIME类型',
       },
+      // 上传状态：uploading=上传中, completed=已完成, failed=失败
       status: {
         type: DataTypes.ENUM('uploading', 'completed', 'failed'),
         allowNull: false,
         defaultValue: 'uploading',
-        comment: '上传状态',
       },
       fileHash: {
         type: DataTypes.STRING(32),

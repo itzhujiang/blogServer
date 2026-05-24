@@ -145,11 +145,19 @@ export enum AiChatMessageRole {
   SYSTEM = 'system',
 }
 
-export type AiChatMessageRoleLiteral = 'user' | 'assistant' | 'system'
+export type AiChatMessageRoleLiteral = 'user' | 'assistant' | 'system';
 
 export enum AiChatMessageType {
   TEXT = 'text',
   SYSTEM = 'system',
 }
 
-export type AiChatMessageTypeLiteral = 'text' | 'system'
+export type AiChatMessageTypeLiteral = 'text' | 'A2UI';
+
+export type AiGlobalChatMemoryCategoryLiteral = 'user' | 'feedback' | 'reference';
+
+export enum AiGlobalChatMemoryCategory {
+  USER = 'user',
+  FEEDBACK = 'feedback',
+  REFERENCE = 'reference',
+}

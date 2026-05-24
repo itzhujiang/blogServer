@@ -7,25 +7,85 @@ import {
   AiChatMessages,
   AiChatMessageRoleLiteral,
   AiChatMessageTypeLiteral,
+  sequelize,
 } from '../../models';
 import { RunAgentInput } from '@ag-ui/core';
 import { agUiInputToUnifyInput, unifyInputToLangChainInput } from '@/ai/utils/adapters';
 import { createMainAgent } from '@/ai/agent';
 import { v4 as uuidv4 } from 'uuid';
 import { toolExecutionManager } from '@/ai/utils/toolExecutionManager';
+import { GlobalMsgList, getGlobalMemoryAgent } from '@/ai/agent/memory';
+
 type ChatRequestType = RunAgentInput;
 
 const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType) => {
   // const { id } = req.aiUser!;
   // const uuid = uuidv4();
+  const transaction = await sequelize.transaction();
+  const globalMsgList: GlobalMsgList[] = req.body.messages.map(item => {
+    return {
+      messageId: item.id,
+      content: item.content as string,
+      role: item.role,
+    };
+  });
   try {
     const reasoningId = uuidv4();
     const activityId = uuidv4();
+    const threadId = req.body.threadId;
+    const session = await AiChatSessions.findOne({
+      where: {
+        session_id: threadId,
+      },
+    });
+    let sessionId = session?.id;
+    const msg = req.body?.messages
+      ? (req.body.messages[req.body.messages.length - 1]?.content as string)
+      : '新的会话';
+    if (!sessionId) {
+      const res = await AiChatSessions.create(
+        {
+          session_id: threadId,
+          user_id: req.aiUser?.id ?? 0,
+          title: '新的会话',
+          last_message_preview: msg,
+        },
+        {
+          transaction,
+        }
+      );
+      sessionId = res.id;
+    } else {
+      await AiChatSessions.update(
+        {
+          last_message_preview: msg,
+        },
+        {
+          where: {
+            session_id: sessionId,
+          },
+          transaction,
+        }
+      );
+    }
+    //插入用户消息
+    await AiChatMessages.create(
+      {
+        message_id: reasoningId,
+        session_id: sessionId!,
+        role: 'user',
+        message_type: 'text',
+        content: JSON.stringify(req.body.messages[req.body.messages.length - 1]?.content ?? ''),
+      },
+      {
+        transaction,
+      }
+    );
     const langChainInput = unifyInputToLangChainInput(agUiInputToUnifyInput(req.body));
     // langChainInput.tools
     const run = createMainAgent();
     const runResult = await run({
-      thread_id: req.body.threadId,
+      thread_id: threadId,
       message: langChainInput,
       ip: req.aiUser?.id?.toString() ?? '',
       run_id: req.body.runId,
@@ -54,15 +114,18 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
           keepaliveTimer = setInterval(() => agui.keepalive(res), 15000);
           break;
         case 'modelEnd':
-          if (keepaliveTimer) {
-            clearInterval(keepaliveTimer);
-            keepaliveTimer = null;
+          {
+            if (keepaliveTimer) {
+              clearInterval(keepaliveTimer);
+              keepaliveTimer = null;
+            }
+            agui.runFinished(res, {
+              runId: evt.runId,
+              threadId: evt.threadId,
+            });
+            agui.end(res);
+            getGlobalMemoryAgent(globalMsgList, evt.threadId, req.aiUser!.id);
           }
-          agui.runFinished(res, {
-            runId: evt.runId,
-            threadId: evt.threadId,
-          });
-          agui.end(res);
           break;
         case 'messageStart':
           // agui.activityDelta(res, 'THINKING', activityId, [
@@ -90,7 +153,8 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
             delta: evt.message,
           });
           break;
-        case 'messageEnd':
+        case 'messageEnd': {
+          const content = evt.content;
           agui.textMessageEnd(res, {
             messageId: evt.messageId,
           });
@@ -102,9 +166,52 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
               { op: 'replace', path: '/content', value: 'AI输出完成' },
             ],
           });
+          globalMsgList.push({
+            messageId: evt.messageId,
+            content,
+            role: 'assistant',
+          });
+          await AiChatMessages.create(
+            {
+              message_id: evt.messageId,
+              session_id: sessionId!,
+              role: 'assistant',
+              message_type: 'text',
+              content: content,
+            },
+            {
+              transaction,
+            }
+          );
+          await AiChatSessions.update(
+            {
+              last_message_preview: content,
+            },
+            {
+              where: {
+                session_id: sessionId,
+              },
+              transaction,
+            }
+          );
           break;
+        }
         case 'a2uiMessage': {
           const id = 'custom' + uuidv4();
+          const value = JSON.stringify(evt.value);
+          // 插入a2ui消息
+          await AiChatMessages.create({
+            message_id: id,
+            session_id: sessionId!,
+            role: 'assistant',
+            message_type: 'A2UI',
+            content: value,
+          });
+          globalMsgList.push({
+            messageId: id,
+            content: value,
+            role: 'assistant',
+          });
           agui.custom(res, {
             name: 'a2ui',
             value: evt.value,
@@ -143,8 +250,10 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
           break;
       }
     }
+    transaction.commit();
     return null;
   } catch (error) {
+    transaction.rollback();
     console.log(error);
     return null;
   }
@@ -179,6 +288,8 @@ const toolResult = async (
 type SessionListResponseType = {
   /** id */
   id: number;
+  /** 会话id */
+  sessionId: string;
   /** 标题 */
   title: string;
   /** 最后一条实际消息的摘要，用于会话列表展示 */
@@ -210,16 +321,19 @@ const getSessionList = async (
     offset: (page - 1) * size,
     distinct: true, // 防止关联查询导致的重复计数
     order: [['last_message_at', sort]],
-    attributes: ['id', 'title', 'last_message_preview', 'last_message_at'],
+    attributes: ['id', 'title', 'last_message_preview', 'last_message_at', 'session_id'],
+    where: {
+      user_id: aiUser.id,
+    },
   });
 
   const results = rows.map(item => ({
     id: item.id,
+    sessionId: item.session_id,
     title: item.title,
     lastMessagePreview: item.last_message_preview,
     lastMessageAt: item.last_message_at,
   }));
-
   return {
     msg: '成功',
     data: {
@@ -241,10 +355,10 @@ type MessagesRequsetType = {
 };
 
 type MessagesResponseType = {
-  /** 消息id */
+  /** id */
   id: number;
-  /** 服务id */
-  serverId: string;
+  /** 消息id */
+  messageId: string;
   /** 会话id */
   sessionId: number;
   /** 角色 */
@@ -261,7 +375,7 @@ const getMessages = async (
   params: ParameBodyType<MessagesRequsetType>
 ): Promise<HandlerResult<MessagesResponseType>> => {
   const { id, page = 1, size = 20, sort = 'ASC' } = params;
-  if (id) {
+  if (!id) {
     return {
       msg: '成功',
       data: {
@@ -276,18 +390,17 @@ const getMessages = async (
   }
   const { rows, count } = await AiChatMessages.findAndCountAll({
     where: {
-      id,
+      session_id: id,
     },
     limit: size,
     offset: (page - 1) * size,
     distinct: true, // 防止关联查询导致的重复计数
     order: [['createdAt', sort]],
-    attributes: ['id', 'serverId'],
   });
 
   const results = rows.map(item => ({
     id: item.id,
-    serverId: item.server_id,
+    messageId: item.message_id,
     sessionId: item.session_id,
     role: item.role,
     messageType: item.message_type,

@@ -49,11 +49,11 @@ export function initAboutPageMediaModel(sequelize: Sequelize): typeof AboutPageM
         allowNull: false,
         comment: '媒体文件ID',
       },
+      // 使用类型：avatar=头像, content=内容文件
       usageType: {
         type: DataTypes.ENUM('avatar', 'content'),
         allowNull: false,
         defaultValue: 'avatar',
-        comment: '使用类型 (avatar=头像, content=内容文件)',
       },
       createdAt: {
         type: DataTypes.BIGINT,
