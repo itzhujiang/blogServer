@@ -103,6 +103,7 @@ export const saveUserGlobalMemories = tool(
       });
       return res.id.toString();
     } catch (error) {
+      console.log('saveUserGlobalMemories error', error);
       return error instanceof Error ? error.message : 'Unknown error';
     }
   },

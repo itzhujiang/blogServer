@@ -86,7 +86,10 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
     const run = createMainAgent();
     const runResult = await run({
       thread_id: threadId,
-      message: langChainInput,
+      message: {
+        ...langChainInput,
+        userId: req.aiUser?.id ?? 0,
+      },
       ip: req.aiUser?.id?.toString() ?? '',
       run_id: req.body.runId,
     });

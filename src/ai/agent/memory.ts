@@ -4,6 +4,7 @@ import { createOpenAiLLM } from '@/ai/utils/llm';
 import { Role } from '@ag-ui/core';
 import { saveGlobalMemoryIndex, saveUserGlobalMemories, getGlobalMemoryIndex } from '@/ai/tools';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
+import { AiGlobalChatMemoryCategory } from '@/models';
 
 export type GlobalMsgList = {
   /** 消息ID */
@@ -14,14 +15,16 @@ export type GlobalMsgList = {
   role: Role;
 };
 
-const MEMORY_TYPES = ['user', 'feedback', 'reference'] as const;
+const MEMORY_TYPES = Object.values(AiGlobalChatMemoryCategory);
+
+export const MAX_ENTRYPOINT_LINES = 200;
 
 const previousMessageIdMap = new Map<string, string>(); // 用于存储消息ID与上一条已经被记录的消息ID的映射关系
 const isRunningMap = new Map<string, boolean>(); // 按 threadId 隔离运行状态，避免同一线程重复调用
 const msgListMap = new Map<string, GlobalMsgList[]>(); // 按 threadId 存储消息列表，供记忆提取使用
 const pendingMap = new Map<string, boolean>(); // 运行期间是否有新调用进来
 
-const buildGlobalMemoryPrompt = (
+const buildSaveGlobalMemoryPrompt = (
   newMessageCount: number,
   newMessages: GlobalMsgList[],
   memoryIndexContent: string
@@ -114,7 +117,8 @@ const buildGlobalMemoryPrompt = (
     '</type>',
     '</types>',
     '## 如何保存记忆',
-    '保存一条 记忆 需要分两步：',
+    '保存一条 记忆 需要分两步，**必须严格按顺序执行，禁止并行调用这两个工具**：',
+    '**步骤 1 必须完成并拿到返回的 ID 后，才能执行步骤 2。**',
     '**步骤 1** —— 调用 saveUserGlobalMemories 工具保存记忆，其中 content 字段为带 frontmatter 的 markdown，格式如下：',
     '```markdown',
     '---',
@@ -130,11 +134,17 @@ const buildGlobalMemoryPrompt = (
     '- 按主题来组织记忆，而不是按时间顺序组织',
     '- 如果某条记忆被发现有误或已经过时，应更新或删除',
     '- 不要写入重复的忆。写入新记忆之前，先检查是否已有可以直接更新的现有记忆。',
+    '- 每条记忆只调用一次 saveUserGlobalMemories，不要对同一条记忆重复调用。',
+    '- 所有记忆保存完毕后，调用一次 saveGlobalMemoryIndex 更新索引，然后立即停止，不要再调用任何工具。',
     '## 不应该保存到记忆中的内容',
     '- 任何已经写在 CLAUDE.md 文件中的内容。',
     '- 短期任务细节：例如进行中的工作、临时状态、当前对话上下文。',
   ];
 };
+
+// const buildUseGlobalMemoriesPrompt = () => {
+
+// };
 
 /**
  * 获取全局记忆agent， 该agent会记录所有的消息
@@ -200,23 +210,29 @@ export const getGlobalMemoryAgent = async (
     function getModel(recordMsgList: GlobalMsgList[]) {
       return async () => {
         const tools = [saveGlobalMemoryIndex, saveUserGlobalMemories];
-        const llm = createOpenAiLLM({ verbose: false });
+        const llm = createOpenAiLLM({ verbose: true }).bindTools(tools, {
+          parallel_tool_calls: false, // 禁止并行工具调用，确保步骤1完成后才执行步骤2
+        });
         const memoryIndexContent = await getMemoryIndexContent();
         const newMessageCount = recordMsgList.length;
-        const prompt = buildGlobalMemoryPrompt(newMessageCount, recordMsgList, memoryIndexContent);
+        const prompt = buildSaveGlobalMemoryPrompt(
+          newMessageCount,
+          recordMsgList,
+          memoryIndexContent
+        );
         const agent = createReactAgent({ llm, tools });
-        await agent.invoke({
-          messages: [{ role: 'system', content: prompt.join('\n') }],
-        });
+        await agent.invoke(
+          { messages: [{ role: 'system', content: prompt.join('\n') }] },
+          { recursionLimit: 10 }
+        );
       };
     }
 
     const recordMsgList = getrecordMsgList();
-    console.log('recordMsgList', recordMsgList);
     // 如果记录列表大于了4条，开始进行记忆提取
     if (recordMsgList.length > 4) {
       previousMessageIdMap.set(threadId, recordMsgList[recordMsgList.length - 1].messageId); // 更新记录点
-      // 这里可以调用一个专门的记忆提取模型，来对recordMsgList进行提取，得到精简的记忆内容，最后存储到数据库或者缓存中
+      // 这里可以调用一个专门的记忆提取模型，来对recordMsgList进行提取，得到精简的记忆内容，最后存储到数据库
       const callModel = getModel(recordMsgList);
       await callModel();
     }

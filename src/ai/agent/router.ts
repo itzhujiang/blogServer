@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createOpenAiLLM } from '@/ai/utils/llm';
 import { AgentStateAnnotation } from '@/ai/utils/utils';
+// import { getGlobalMemoryIndex } from '@/ai/tools';
 
 const routerSchema = z.object({
   next: z
@@ -17,6 +18,11 @@ export async function routerNode(state: typeof AgentStateAnnotation.State) {
   if (msg.length > 10) {
     msg = msg.slice(-10); // 如果消息列表过长，只保留最后10条消息，避免超过模型输入限制
   }
+
+  // const content = await getGlobalMemoryIndex.invoke({
+  //   userId: state.userId,
+  // });
+  // const systemContent = [``, content ? `\n## 关于用户的记忆\n${content}` : ''].join('');
   const result = await llm.invoke([
     {
       role: 'system',
