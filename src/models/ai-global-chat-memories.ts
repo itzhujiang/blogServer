@@ -108,9 +108,7 @@ export function initAiGlobalChatMemoriesModel(sequelize: Sequelize): typeof AiGl
       sequelize,
       tableName: 'ai_global_chat_memories',
       underscored: true,
-      timestamps: true,
-      createdAt: 'createdAt',
-      updatedAt: 'updatedAt',
+      timestamps: false,
       deletedAt: 'deletedAt',
       paranoid: true,
       hooks: {
@@ -121,6 +119,12 @@ export function initAiGlobalChatMemoriesModel(sequelize: Sequelize): typeof AiGl
         },
         beforeUpdate: (instance: AiGlobalChatMemories) => {
           instance.updatedAt = Date.now();
+          // paranoid destroy 内部走 update，会把 deletedAt 设为 new Date()
+          // 这里统一修正为毫秒时间戳
+          const deletedAt = instance.deletedAt as any;
+          if (deletedAt instanceof Date) {
+            instance.deletedAt = deletedAt.getTime();
+          }
         },
       },
       indexes: [
