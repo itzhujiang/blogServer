@@ -2,9 +2,12 @@
 import { createOpenAiLLM } from '@/ai/utils/llm';
 // import { AgentStateAnnotation } from '../utils/utils';
 import { Role } from '@ag-ui/core';
+import { Annotation, END, MessagesAnnotation, START, StateGraph } from '@langchain/langgraph';
+import { ToolNode } from '@langchain/langgraph/prebuilt';
+
 import { saveGlobalMemoryIndex, saveUserGlobalMemories, getGlobalMemoryIndex } from '@/ai/tools';
-import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { AiGlobalChatMemoryCategory } from '@/models';
+import { AIMessage } from '@langchain/core/messages';
 
 export type GlobalMsgList = {
   /** 消息ID */
@@ -19,26 +22,26 @@ const MEMORY_TYPES = Object.values(AiGlobalChatMemoryCategory);
 
 export const MAX_ENTRYPOINT_LINES = 200;
 
+const AgentStateAnnotation = Annotation.Root({
+  threadId: Annotation<string>,
+  userId: Annotation<number>,
+  ...MessagesAnnotation.spec,
+});
+
 const previousMessageIdMap = new Map<string, string>(); // 用于存储消息ID与上一条已经被记录的消息ID的映射关系
 const isRunningMap = new Map<string, boolean>(); // 按 threadId 隔离运行状态，避免同一线程重复调用
 const msgListMap = new Map<string, GlobalMsgList[]>(); // 按 threadId 存储消息列表，供记忆提取使用
 const pendingMap = new Map<string, boolean>(); // 运行期间是否有新调用进来
 
-const buildSaveGlobalMemoryPrompt = (
-  newMessageCount: number,
-  newMessages: GlobalMsgList[],
-  memoryIndexContent: string
-) => {
+const buildSaveGlobalMemoryPrompt = (newMessageCount: number, memoryIndexContent: string) => {
   return [
-    `# 你是一个记忆助手，负责根据最近约 ${newMessageCount}条信息，提取关键信息形成记忆，帮助AI更好地理解用户的需求和背景。`,
+    `# 你是一个记忆助手，负责根据提供的新的消息信息，约 ${newMessageCount}条信息，提取关键信息形成记忆，帮助AI更好地理解用户的需求和背景。`,
     `可用工具:saveGlobalMemoryIndex（保存指定用户全局记忆索引工具）、saveUserGlobalMemories(保存指定用户全局记忆工具)。禁止直接访问数据库或存储系统来读写记忆内容。`,
     `你只能使用最近约 ${newMessageCount} 条消息中的内容来更新持久化记忆系统。`,
     `以下是现有的全局记忆索引内容，供你参考：`,
     `<existing_memory_index>`,
     memoryIndexContent,
     `</existing_memory_index>`,
-    `以下是你需要提取的消息内容：`,
-    newMessages.map(msg => `- ${msg.role}: ${msg.content}`).join('\n'),
     `如果用户明确让你记住某件事，就立刻按最合适的类型将其保存下来；如果用户要求你忘记某件事，就找到相关条目并将其删除。`,
     '## 记忆的类型',
     '在你的记忆系统中，可以存储若干种彼此离散的记忆类型：',
@@ -117,8 +120,7 @@ const buildSaveGlobalMemoryPrompt = (
     '</type>',
     '</types>',
     '## 如何保存记忆',
-    '保存一条 记忆 需要分两步，**必须严格按顺序执行，禁止并行调用这两个工具**：',
-    '**步骤 1 必须完成并拿到返回的 ID 后，才能执行步骤 2。**',
+    '保存一条 记忆 需要分两步：',
     '**步骤 1** —— 调用 saveUserGlobalMemories 工具保存记忆，其中 content 字段为带 frontmatter 的 markdown，格式如下：',
     '```markdown',
     '---',
@@ -134,15 +136,13 @@ const buildSaveGlobalMemoryPrompt = (
     '- 按主题来组织记忆，而不是按时间顺序组织',
     '- 如果某条记忆被发现有误或已经过时，应更新或删除',
     '- 不要写入重复的忆。写入新记忆之前，先检查是否已有可以直接更新的现有记忆。',
-    '- 每条记忆只调用一次 saveUserGlobalMemories，不要对同一条记忆重复调用。',
-    '- 所有记忆保存完毕后，调用一次 saveGlobalMemoryIndex 更新索引，然后立即停止，不要再调用任何工具。',
     '## 不应该保存到记忆中的内容',
-    '- 任何已经写在 CLAUDE.md 文件中的内容。',
+    '- 过于琐碎的细节：例如用户在对话中提到的某个临时状态、某次特定的错误、或者某条消息的具体内容，这些通常不适合被保存为记忆，因为它们可能很快就会过时，或者在未来的对话中不再相关。',
     '- 短期任务细节：例如进行中的工作、临时状态、当前对话上下文。',
   ];
 };
 
-// const buildUseGlobalMemoriesPrompt = () => {
+// // const buildUseGlobalMemoriesPrompt = () => {
 
 // };
 
@@ -157,13 +157,15 @@ export const getGlobalMemoryAgent = async (
   threadId: string,
   userid: number
 ) => {
+  msgListMap.set(threadId, msgList); // 更新消息列表
+  if (isRunningMap.get(threadId)) {
+    pendingMap.set(threadId, true); // 标记有新调用进来，等当前处理完后再跑一次
+    return;
+  }
+  isRunningMap.set(threadId, true);
   try {
-    msgListMap.set(threadId, msgList); // 更新消息列表
-    if (isRunningMap.get(threadId)) {
-      pendingMap.set(threadId, true); // 标记有新调用进来，等当前处理完后再跑一次
-      return;
-    }
-    isRunningMap.set(threadId, true);
+    console.log('isRunningMap.get(threadId)', isRunningMap);
+
     const newMessageList = msgListMap.get(threadId)!;
     /**
    * 获取需要被记录的消息列表，并更新previousMessageIdMap中的消息ID映射关系
@@ -207,34 +209,78 @@ export const getGlobalMemoryAgent = async (
       });
     }
 
+    /**
+     * 工具执行节点
+     * 需要动态创建，因为要包含前端传入的工具
+     */
+    async function toolExecutor(state: typeof AgentStateAnnotation.State) {
+      const tools = [saveGlobalMemoryIndex, saveUserGlobalMemories];
+      const toolNode = new ToolNode(tools);
+      // 执行工具
+      return await toolNode.invoke(state);
+    }
+    function shouldContinue(state: typeof AgentStateAnnotation.State) {
+      const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
+      if ((lastMessage.tool_calls?.length ?? 0) > 0) {
+        return 'tool_executor';
+      }
+      return END;
+    }
+
     function getModel(recordMsgList: GlobalMsgList[]) {
-      return async () => {
+      // 防止重复查询数据库
+      let prompt: string[];
+      return async (state: typeof AgentStateAnnotation.State) => {
         const tools = [saveGlobalMemoryIndex, saveUserGlobalMemories];
-        const llm = createOpenAiLLM({ verbose: true }).bindTools(tools, {
-          parallel_tool_calls: false, // 禁止并行工具调用，确保步骤1完成后才执行步骤2
-        });
-        const memoryIndexContent = await getMemoryIndexContent();
-        const newMessageCount = recordMsgList.length;
-        const prompt = buildSaveGlobalMemoryPrompt(
-          newMessageCount,
-          recordMsgList,
-          memoryIndexContent
-        );
-        const agent = createReactAgent({ llm, tools });
-        await agent.invoke(
-          { messages: [{ role: 'system', content: prompt.join('\n') }] },
-          { recursionLimit: 10 }
-        );
+        const llm = createOpenAiLLM({
+          verbose: true,
+        }).bindTools(tools);
+        if (!prompt) {
+          const memoryIndexContent = await getMemoryIndexContent();
+          prompt = buildSaveGlobalMemoryPrompt(recordMsgList.length, memoryIndexContent);
+        }
+        const response = await llm.invoke([
+          {
+            role: 'system',
+            content: prompt.join('\n'),
+          },
+          ...state.messages,
+        ]);
+        return {
+          messages: [response],
+        };
       };
     }
 
     const recordMsgList = getrecordMsgList();
+    // console.log('recordMsgList', recordMsgList);
     // 如果记录列表大于了4条，开始进行记忆提取
     if (recordMsgList.length > 4) {
       previousMessageIdMap.set(threadId, recordMsgList[recordMsgList.length - 1].messageId); // 更新记录点
       // 这里可以调用一个专门的记忆提取模型，来对recordMsgList进行提取，得到精简的记忆内容，最后存储到数据库
       const callModel = getModel(recordMsgList);
-      await callModel();
+      const workflow = new StateGraph(AgentStateAnnotation)
+        .addNode('callModel', callModel)
+        .addNode('tool_executor', toolExecutor)
+        .addEdge(START, 'callModel')
+        .addConditionalEdges('callModel', shouldContinue, ['tool_executor', END])
+        .addEdge('tool_executor', 'callModel'); // 执行完工具回到 callModel
+      const agent = workflow.compile();
+      await agent.invoke({
+        threadId,
+        userId: userid,
+        messages: [
+          ...recordMsgList.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          {
+            role: 'user',
+            content: '请根据以上对话内容，提取关键信息形成记忆，并调用工具保存。',
+          },
+        ],
+      });
+      console.log('执行完毕');
     }
     // 如果运行期间有新调用进来，取最新列表再跑一次
   } catch (error) {
@@ -243,7 +289,13 @@ export const getGlobalMemoryAgent = async (
     isRunningMap.set(threadId, false);
     if (pendingMap.get(threadId)) {
       pendingMap.delete(threadId);
-      await getGlobalMemoryAgent(msgListMap.get(threadId)!, threadId, userid);
+      // 检查是否真的有新消息需要处理，避免无意义的递归
+      const latestList = msgListMap.get(threadId)!;
+      const lastProcessedId = previousMessageIdMap.get(threadId);
+      const lastMsgId = latestList[latestList.length - 1]?.messageId;
+      if (lastMsgId && lastMsgId !== lastProcessedId) {
+        await getGlobalMemoryAgent(latestList, threadId, userid);
+      }
     }
   }
 };
