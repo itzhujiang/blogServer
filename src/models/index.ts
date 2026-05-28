@@ -23,6 +23,7 @@ import { initAiChatUsersModel } from './ai-chat-users';
 import { initAiChatSessionsModel } from './ai-chat-sessions';
 import { initAiChatMessagesModel } from './ai-chat-messages';
 import { initAiGlobalChatMemoriesModel } from './ai-global-chat-memories';
+import { initAiSessionMemoriesModel } from './ai-session-memories';
 
 export { sequelize } from './db';
 
@@ -50,6 +51,7 @@ export { AiChatUsers, initAiChatUsersModel } from './ai-chat-users';
 export { AiChatSessions, initAiChatSessionsModel } from './ai-chat-sessions';
 export { AiChatMessages, initAiChatMessagesModel } from './ai-chat-messages';
 export { AiGlobalChatMemories, initAiGlobalChatMemoriesModel } from './ai-global-chat-memories';
+export { AiSessionMemories, initAiSessionMemoriesModel } from './ai-session-memories';
 
 // 类型导出
 export type { CategoryAttributes, CategoryCreationAttributes } from './category';
@@ -89,6 +91,10 @@ export type {
   AiGlobalChatMemoriesAttributes,
   AiGlobalChatMemoriesCreationAttributes,
 } from './ai-global-chat-memories';
+export type {
+  AiSessionMemoriesAttributes,
+  AiSessionMemoriesCreationAttributes,
+} from './ai-session-memories';
 
 /**
  * 初始化所有模型
@@ -120,6 +126,7 @@ export async function initAllModels(force = false, alter = false) {
   const AiChatSessions = initAiChatSessionsModel(sequelize);
   const AiChatMessages = initAiChatMessagesModel(sequelize);
   const AiGlobalChatMemories = initAiGlobalChatMemoriesModel(sequelize);
+  const AiSessionMemories = initAiSessionMemoriesModel(sequelize);
   // 定义模型关联关系
 
   // === 文章系统关联 ===
@@ -341,6 +348,7 @@ export async function initAllModels(force = false, alter = false) {
     AiChatSessions,
     AiChatMessages,
     AiGlobalChatMemories,
+    AiSessionMemories,
   };
 }
 
