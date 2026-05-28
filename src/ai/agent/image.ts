@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createOpenAiLLM } from '@/ai/utils/llm';
 
-import { textToImage } from '../tools';
+import { generalTools, textToImage } from '../tools';
 import { AgentStateAnnotation } from '../utils/utils';
 import { START, StateGraph } from '@langchain/langgraph';
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
@@ -158,7 +158,7 @@ async function callModelWithResult(state: typeof AgentStateAnnotation.State) {
 }
 
 export const imageAgentNodes = () => {
-  const staticTools = [textToImage];
+  const staticTools = [textToImage, ...generalTools];
   async function dialogueModel(state: typeof AgentStateAnnotation.State) {
     // 合并静态工具和动态工具
     const allTools = [...staticTools, ...state.tools];
@@ -167,6 +167,10 @@ export const imageAgentNodes = () => {
       {
         role: 'system',
         content: dialoguePrompt,
+      },
+      {
+        role: 'system',
+        content: state.memoryPrompt,
       },
       ...state.messages,
     ]);

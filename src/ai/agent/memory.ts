@@ -5,9 +5,10 @@ import { Role } from '@ag-ui/core';
 import { Annotation, END, MessagesAnnotation, START, StateGraph } from '@langchain/langgraph';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 
-import { saveGlobalMemoryIndex, saveUserGlobalMemories, getGlobalMemoryIndex } from '@/ai/tools';
+import { saveGlobalMemoryIndex, saveUserGlobalMemories, fetchGlobalMemoryIndex } from '@/ai/tools';
 import { AiGlobalChatMemoryCategory } from '@/models';
 import { AIMessage } from '@langchain/core/messages';
+import { AgentStateAnnotation } from '@/ai/utils/utils';
 
 export type GlobalMsgList = {
   /** 消息ID */
@@ -20,9 +21,11 @@ export type GlobalMsgList = {
 
 const MEMORY_TYPES = Object.values(AiGlobalChatMemoryCategory);
 
-export const MAX_ENTRYPOINT_LINES = 200;
+const MAX_ENTRYPOINT_LINES = 200;
 
-const AgentStateAnnotation = Annotation.Root({
+const MAX_ENTRYPOINT_BYTES = 25000;
+
+const MemoryAgentStateAnnotation = Annotation.Root({
   threadId: Annotation<string>,
   userId: Annotation<number>,
   ...MessagesAnnotation.spec,
@@ -32,7 +35,45 @@ const previousMessageIdMap = new Map<string, string>(); // 用于存储消息ID�
 const isRunningMap = new Map<string, boolean>(); // 按 threadId 隔离运行状态，避免同一线程重复调用
 const msgListMap = new Map<string, GlobalMsgList[]>(); // 按 threadId 存储消息列表，供记忆提取使用
 const pendingMap = new Map<string, boolean>(); // 运行期间是否有新调用进来
+/**
+ * 得到前200条记忆索引
+ * @param globalMemoryIndex
+ * @returns
+ */
+function truncateEntrypointContent(globalMemoryIndex: string) {
+  const trimmed = globalMemoryIndex.trim();
+  const contentLines = trimmed.split('\n');
+  const lineCount = contentLines.length;
+  const byteCount = trimmed.length;
 
+  const wasLineTruncated = lineCount > MAX_ENTRYPOINT_LINES;
+  const wasByteTruncated = byteCount > MAX_ENTRYPOINT_BYTES;
+
+  if (!wasLineTruncated && !wasByteTruncated) {
+    return {
+      content: trimmed,
+    };
+  }
+
+  let truncated = wasLineTruncated
+    ? contentLines.slice(0, MAX_ENTRYPOINT_LINES).join('\n')
+    : trimmed;
+
+  if (truncated.length > MAX_ENTRYPOINT_BYTES) {
+    const cutAt = truncated.lastIndexOf('\n', MAX_ENTRYPOINT_BYTES);
+    truncated = truncated.slice(0, cutAt > 0 ? cutAt : MAX_ENTRYPOINT_BYTES);
+  }
+
+  return {
+    content: truncated,
+  };
+}
+/**
+ * 构建保存记忆提示词
+ * @param newMessageCount
+ * @param memoryIndexContent
+ * @returns
+ */
 const buildSaveGlobalMemoryPrompt = (newMessageCount: number, memoryIndexContent: string) => {
   return [
     `# 你是一个记忆助手，负责根据提供的新的消息信息，约 ${newMessageCount}条信息，提取关键信息形成记忆，帮助AI更好地理解用户的需求和背景。`,
@@ -51,7 +92,7 @@ const buildSaveGlobalMemoryPrompt = (newMessageCount: number, memoryIndexContent
     '<name>user</name>',
     `<description>
         用于保存关于用户角色、目标、职责和知识背景的信息。优秀的 user 记忆
-        能帮助你在未来根据用户的偏好和视角来调整自己的行为。你在读取和写入这类记忆时，目标是逐步建立对“用户是谁”以及“怎样才能
+        能帮助你在未来根据用户的偏好和视角来调整自己的行为。你在写入这类记忆时，目标是逐步建立对“用户是谁”以及“怎样才能
         更有针对性地帮助这个用户”的理解。例如，你与一位资深软件工程师协作的方式，应该不同于与你第一次写代码的学生协作的方式。
         请记住，这里的目标是更好地帮助用户。避免记录那些可能被视为负面评价、或者与当前协作目标无关的用户信息。
       </description>`,
@@ -101,21 +142,15 @@ const buildSaveGlobalMemoryPrompt = (newMessageCount: number, memoryIndexContent
     '<name>reference</name>',
     `<description>
       用于保存“去哪里可以找到信息”的线索，尤其是外部系统中的信息位置。这类记忆可以帮助你记住：如果想获
-      取项目目录之外的最新信息，应该去哪里查找。
+      取项内容之外的最新信息，应该去哪里查找。
     </description>`,
     `<when_to_save>
-      当你了解到某个外部系统中的资源及其用途时，就应该保存。例如，你知道某类 bug 是在 Linear
-    的某个特定项目里跟踪的，或者某类反馈会出现在某个特定的 Slack 频道中。
+      当你了解到某个外部系统中的资源及其用途时，就应该保存。例如，你知道某种框架时在什么网站中
     </when_to_save>`,
     '<how_to_use>当用户提到某个外部系统，或者用户要找的信息很可能存在于外部系统中时，使用这类记忆。</how_to_use>',
     `<examples>
-     user: 如果你想了解这些 ticket 的背景，就去看 Linear 里的 "INGEST" 项目，我们所有的 pipeline bug
-      都是在那里面跟踪的,
-     assistant: [保存 reference 记忆：pipeline 相关 bug 记录在 Linear 项目 "INGEST" 中],
-     user: grafana.internal/d/api-latency 这个 Grafana 面板是 oncall 在盯的 ——
-      如果你改的是请求处理链路，这就是那个会触发告警的面板,
-     assistant: [保存 reference 记忆：grafana.internal/d/api-latency 是 oncall 关注的延迟监控面板 ——
-      修改请求路径相关代码时应查看它],
+     user: 如果你想了解这些 vue 框架，就去看 https://cn.vuejs.org/,
+     assistant: [保存 reference 记忆：vue 相关文档记录 https://cn.vuejs.org/],
     </examples>`,
     '</type>',
     '</types>',
@@ -131,8 +166,8 @@ const buildSaveGlobalMemoryPrompt = (newMessageCount: number, memoryIndexContent
     '',
     '{{记忆内容——对于反馈类型，结构如下：规则，然后是 **原因：** 和 **应用方法：** 行}}',
     '```',
-    '**步骤 2** 根据步骤 1 返回的 ID，更新索引内容，调用 saveGlobalMemoryIndex 工具保存索引内容。这个工具用于管理全局记忆索引。禁止直接将记忆内容(正文)写入到索引文件中。每个条目只占一行，长度尽量控制在 150 个字符以内，索引内容的格式为：`- [{{id}}] {{Title}} — {{one-line hook}}`，其中 Title 和 hook 都要尽量简洁具体，方便在未来的对话中进行相关性判断。不带 frontmatter。',
-    '- 索引内容会始终加载到系统提示词中；超过 200 行的内容会被截断，因此索引要尽量简洁',
+    '**步骤 2** 根据步骤 1 返回的 ID，更新索引内容，调用 saveGlobalMemoryIndex 工具保存索引内容。这个工具用于管理全局记忆索引。禁止直接将记忆内容(正文)写入到索引文件中。每个条目只占一行，长度尽量控制在 150 个字符以内，索引内容的格式为：`- [{{id}}] {{Title}} — {{one-line hook}}`，每条记忆占一行，多条记忆之间用换行分隔，其中 Title 和 hook 都要尽量简洁具体，方便在未来的对话中进行相关性判断。不带 frontmatter。',
+    `- 索引内容会始终加载到系统提示词中；超过 ${MAX_ENTRYPOINT_LINES} 行的内容会被截断，因此索引要尽量简洁`,
     '- 按主题来组织记忆，而不是按时间顺序组织',
     '- 如果某条记忆被发现有误或已经过时，应更新或删除',
     '- 不要写入重复的忆。写入新记忆之前，先检查是否已有可以直接更新的现有记忆。',
@@ -142,9 +177,31 @@ const buildSaveGlobalMemoryPrompt = (newMessageCount: number, memoryIndexContent
   ];
 };
 
-// // const buildUseGlobalMemoriesPrompt = () => {
+/**
+ * 构建使用全局记忆的提示词
+ * @param globalMemoryIndex 索引内容
+ * @param getMemoriesToolNmae 获取完整内容的提示词
+ * @returns
+ */
+export const buildUseGlobalMemoriesPrompt = (
+  globalMemoryIndex: string,
+  getMemoriesToolNmae: string
+) => {
+  const { content } = truncateEntrypointContent(globalMemoryIndex);
+  const prompt = [
+    '# 关于 记忆 的使用',
+    `当用户的信息和记忆索引中的段落有一定关联的时候，你需要根据记忆索引进行回答，必要时通过 ${getMemoriesToolNmae} 工具获取到对应的完整内容信息`,
+    `记忆索引每行格式为：\`- [id] Title — description\`，其中 id 是该条记忆在数据库中的唯一编号，调用 ${getMemoriesToolNmae} 工具时需要传入此 id 来获取完整内容。`,
+    `## 关于记忆索引的类型：由以下 ${MEMORY_TYPES.length} 种，分别为：${MEMORY_TYPES.join(',')}`,
+    `- ${AiGlobalChatMemoryCategory.USER}: 表示保存了 用户角色、目标、职责和知识背景的信息，可以在和用户对话的时候来调整自己的行为`,
+    `- ${AiGlobalChatMemoryCategory.FEEDBACK}: 保存用户告诉你的“应该怎样开展工作”的指导信息——既包括哪些做法要避免，也包括哪些做法应该继续保持。`,
+    `- ${AiGlobalChatMemoryCategory.REFERENCE}: 用于保存“去哪里可以找到信息”的线索，尤其是外部系统中的信息位置。这类记忆可以帮助你记住：如果想获 取项内容之外的最新信息，应该去哪里查找。`,
+    `## 记忆索引内容`,
+    content,
+  ];
 
-// };
+  return prompt.join('\n');
+};
 
 /**
  * 获取全局记忆agent， 该agent会记录所有的消息
@@ -164,8 +221,6 @@ export const getGlobalMemoryAgent = async (
   }
   isRunningMap.set(threadId, true);
   try {
-    console.log('isRunningMap.get(threadId)', isRunningMap);
-
     const newMessageList = msgListMap.get(threadId)!;
     /**
    * 获取需要被记录的消息列表，并更新previousMessageIdMap中的消息ID映射关系
@@ -204,22 +259,19 @@ export const getGlobalMemoryAgent = async (
     }
 
     async function getMemoryIndexContent() {
-      return await getGlobalMemoryIndex.invoke({
-        userId: userid,
-      });
+      return await fetchGlobalMemoryIndex(userid);
     }
 
     /**
      * 工具执行节点
-     * 需要动态创建，因为要包含前端传入的工具
      */
-    async function toolExecutor(state: typeof AgentStateAnnotation.State) {
+    async function toolExecutor(state: typeof MemoryAgentStateAnnotation.State) {
       const tools = [saveGlobalMemoryIndex, saveUserGlobalMemories];
       const toolNode = new ToolNode(tools);
       // 执行工具
       return await toolNode.invoke(state);
     }
-    function shouldContinue(state: typeof AgentStateAnnotation.State) {
+    function shouldContinue(state: typeof MemoryAgentStateAnnotation.State) {
       const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
       if ((lastMessage.tool_calls?.length ?? 0) > 0) {
         return 'tool_executor';
@@ -230,10 +282,10 @@ export const getGlobalMemoryAgent = async (
     function getModel(recordMsgList: GlobalMsgList[]) {
       // 防止重复查询数据库
       let prompt: string[];
-      return async (state: typeof AgentStateAnnotation.State) => {
+      return async (state: typeof MemoryAgentStateAnnotation.State) => {
         const tools = [saveGlobalMemoryIndex, saveUserGlobalMemories];
         const llm = createOpenAiLLM({
-          verbose: true,
+          verbose: false,
         }).bindTools(tools);
         if (!prompt) {
           const memoryIndexContent = await getMemoryIndexContent();
@@ -253,13 +305,12 @@ export const getGlobalMemoryAgent = async (
     }
 
     const recordMsgList = getrecordMsgList();
-    // console.log('recordMsgList', recordMsgList);
     // 如果记录列表大于了4条，开始进行记忆提取
     if (recordMsgList.length > 4) {
       previousMessageIdMap.set(threadId, recordMsgList[recordMsgList.length - 1].messageId); // 更新记录点
       // 这里可以调用一个专门的记忆提取模型，来对recordMsgList进行提取，得到精简的记忆内容，最后存储到数据库
       const callModel = getModel(recordMsgList);
-      const workflow = new StateGraph(AgentStateAnnotation)
+      const workflow = new StateGraph(MemoryAgentStateAnnotation)
         .addNode('callModel', callModel)
         .addNode('tool_executor', toolExecutor)
         .addEdge(START, 'callModel')
@@ -280,7 +331,6 @@ export const getGlobalMemoryAgent = async (
           },
         ],
       });
-      console.log('执行完毕');
     }
     // 如果运行期间有新调用进来，取最新列表再跑一次
   } catch (error) {
@@ -299,3 +349,13 @@ export const getGlobalMemoryAgent = async (
     }
   }
 };
+
+/**
+ * 加载记忆节点，在主图中作为第一个节点执行，将记忆提示词写入 state.memoryPrompt
+ * 所有后续 agent 可直接从 state.memoryPrompt 读取，无需各自查询数据库
+ */
+export async function loadMemoryNode(state: typeof AgentStateAnnotation.State) {
+  const content = await fetchGlobalMemoryIndex(state.userId);
+  const memoryPrompt = buildUseGlobalMemoriesPrompt(content, 'getUserGlobalMemories');
+  return { memoryPrompt };
+}

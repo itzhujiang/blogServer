@@ -4,10 +4,11 @@ import { getGeneralAgentNodes } from './general';
 import { imageAgentNodes } from './image';
 import { langChainStreamEventsOutputToUnifyOutput } from '../utils/adapters';
 import { AgentStateAnnotation } from '../utils/utils';
-import { getWeather, getIpPosition, textToImage } from '../tools';
+import { getWeather, getIpPosition, textToImage, generalTools } from '../tools';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { AIMessage } from '@langchain/core/messages';
 import { routerNode, routeTo } from './router';
+import { loadMemoryNode } from './memory';
 // import { DynamicStructuredTool } from '@langchain/core/tools';
 
 /**
@@ -15,7 +16,7 @@ import { routerNode, routeTo } from './router';
  * 需要动态创建，因为要包含前端传入的工具
  */
 async function toolExecutor(state: typeof AgentStateAnnotation.State) {
-  const staticTools = [getWeather, getIpPosition, textToImage];
+  const staticTools = [getWeather, getIpPosition, textToImage, ...generalTools];
   // 合并静态工具和动态工具
   const allTools = [...staticTools, ...state.tools];
   const toolNode = new ToolNode(allTools);
@@ -39,7 +40,8 @@ async function toolExecutor(state: typeof AgentStateAnnotation.State) {
  */
 function shouldContinue(state: typeof AgentStateAnnotation.State) {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
-  if ((lastMessage.tool_calls?.length ?? 0) > 0) {
+  const toolCallCount = lastMessage.tool_calls?.length ?? 0;
+  if (toolCallCount > 0) {
     return 'tool_executor';
   }
   return END;
@@ -61,6 +63,7 @@ export const createMainAgent = () => {
   const { generalAgentSubgraph } = getGeneralAgentNodes();
   const { imageAgentSubgraph } = imageAgentNodes();
   const builder = new StateGraph(AgentStateAnnotation)
+    .addNode('loadMemory', loadMemoryNode)
     .addNode('router', routerNode)
     .addNode('tool_executor', toolExecutor)
     .addNode('weatherAgent', getWeatherAgentSubgraph)
@@ -68,10 +71,15 @@ export const createMainAgent = () => {
     .addNode('imageAgent', imageAgentSubgraph)
     .addConditionalEdges('weatherAgent', shouldContinue, ['tool_executor', END])
     .addConditionalEdges('imageAgent', shouldContinue, ['tool_executor', END])
+    .addConditionalEdges('generalAgent', shouldContinue, ['tool_executor', END])
     .addConditionalEdges('router', routeTo, ['weatherAgent', 'generalAgent', 'imageAgent', END])
-    .addConditionalEdges('tool_executor', routeAfterTool, ['weatherAgent', 'imageAgent'])
-    .addEdge(START, 'router')
-    .addEdge('generalAgent', END);
+    .addConditionalEdges('tool_executor', routeAfterTool, [
+      'weatherAgent',
+      'imageAgent',
+      'generalAgent',
+    ])
+    .addEdge(START, 'loadMemory')
+    .addEdge('loadMemory', 'router');
   const app = builder.compile();
   async function run({
     thread_id,

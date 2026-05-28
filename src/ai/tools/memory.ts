@@ -4,18 +4,21 @@ import { z } from 'zod';
 
 import { AiGlobalChatMemories, AiGlobalChatMemoryCategory, sequelize } from '@/models';
 
+// 获取指定用户全局记忆索引的底层函数，不触发 LangChain callback
+export async function fetchGlobalMemoryIndex(userId: number): Promise<string> {
+  const res = await AiGlobalChatMemories.findOne({
+    where: {
+      user_id: userId,
+      skip_index: true,
+    },
+    attributes: ['content'],
+  });
+  return res?.content || '';
+}
+
 // 获取指定用户全局记忆索引工具
 export const getGlobalMemoryIndex = tool(
-  async ({ userId }) => {
-    const res = await AiGlobalChatMemories.findOne({
-      where: {
-        user_id: userId,
-        skip_index: true,
-      },
-      attributes: ['content'],
-    });
-    return res?.content || '';
-  },
+  async ({ userId }) => fetchGlobalMemoryIndex(userId),
   {
     name: 'getGlobalMemoryIndex',
     description: '获取指定用户全局记忆索引工具',
@@ -70,6 +73,8 @@ export const saveGlobalMemoryIndex = tool(
 // 获取指定用户指定记忆工具
 export const getUserGlobalMemories = tool(
   async ({ userId, id }) => {
+    console.log('进入了getUserGlobalMemories工具');
+
     const res = await AiGlobalChatMemories.findOne({
       where: {
         user_id: userId,

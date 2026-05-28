@@ -229,6 +229,8 @@ export async function* langChainStreamEventsOutputToUnifyOutput(
         }
       }
     } else if (eventName === 'on_tool_start') {
+      console.log('on_tool_start', event);
+
       yield {
         event: 'toolStart',
         toolCallId: event.metadata.tool_call_id || event.metadata.tool_id,

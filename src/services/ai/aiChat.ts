@@ -89,6 +89,7 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
       message: {
         ...langChainInput,
         userId: req.aiUser?.id ?? 0,
+        memoryPrompt: '',
       },
       ip: req.aiUser?.id?.toString() ?? '',
       run_id: req.body.runId,

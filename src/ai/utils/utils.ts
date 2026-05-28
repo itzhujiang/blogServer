@@ -9,6 +9,7 @@ export const AgentStateAnnotation = Annotation.Root({
   tools: Annotation<ClientTool[]>,
   next: Annotation<string>,
   userId: Annotation<number>,
+  memoryPrompt: Annotation<string>,
   ...MessagesAnnotation.spec,
 });
 
