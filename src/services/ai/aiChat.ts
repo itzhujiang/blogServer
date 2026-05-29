@@ -14,7 +14,7 @@ import { agUiInputToUnifyInput, unifyInputToLangChainInput } from '@/ai/utils/ad
 import { createMainAgent } from '@/ai/agent';
 import { v4 as uuidv4 } from 'uuid';
 import { toolExecutionManager } from '@/ai/utils/toolExecutionManager';
-import { GlobalMsgList, getGlobalMemoryAgent } from '@/ai/agent/memory';
+import { MsgList, getGlobalMemoryAgent } from '@/ai/agent/memory';
 
 type ChatRequestType = RunAgentInput;
 
@@ -22,7 +22,7 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
   // const { id } = req.aiUser!;
   // const uuid = uuidv4();
   const transaction = await sequelize.transaction();
-  const globalMsgList: GlobalMsgList[] = req.body.messages.map(item => {
+  const globalMsgList: MsgList[] = req.body.messages.map(item => {
     return {
       messageId: item.id,
       content: item.content as string,

@@ -10,7 +10,7 @@ import { AiGlobalChatMemoryCategory } from '@/models';
 import { AIMessage } from '@langchain/core/messages';
 import { AgentStateAnnotation } from '@/ai/utils/utils';
 
-export type GlobalMsgList = {
+export type MsgList = {
   /** 消息ID */
   messageId: string;
   /** 内容 */
@@ -20,10 +20,15 @@ export type GlobalMsgList = {
 };
 
 const MEMORY_TYPES = Object.values(AiGlobalChatMemoryCategory);
-
+// 全局记忆的行数
 const MAX_ENTRYPOINT_LINES = 200;
+// 全局记忆的总字数
+const MAX_ENTRYPOINT_BYTES = 8000;
+// 会话记忆每一项的字数
+// const MAX_SECTION_LENGTH = 600;
 
-const MAX_ENTRYPOINT_BYTES = 25000;
+// // 会话记忆一共字数
+// const MAX_TOTAL_SESSION_MEMORY_LENGTH = 4300;
 
 const MemoryAgentStateAnnotation = Annotation.Root({
   threadId: Annotation<string>,
@@ -33,8 +38,56 @@ const MemoryAgentStateAnnotation = Annotation.Root({
 
 const previousMessageIdMap = new Map<string, string>(); // 用于存储消息ID与上一条已经被记录的消息ID的映射关系
 const isRunningMap = new Map<string, boolean>(); // 按 threadId 隔离运行状态，避免同一线程重复调用
-const msgListMap = new Map<string, GlobalMsgList[]>(); // 按 threadId 存储消息列表，供记忆提取使用
+const msgListMap = new Map<string, MsgList[]>(); // 按 threadId 存储消息列表，供记忆提取使用
 const pendingMap = new Map<string, boolean>(); // 运行期间是否有新调用进来
+
+/**
+ * 生成过长内容的提示词
+ * @param currentMemories 当前会话记忆内容
+ */
+// function generateSectionReminders(currentMemories: string) {
+//   const total = currentMemories.length; // 总字数
+//   const sections: Record<string, number> = {}; // 存储的就是标题对应内容的字数
+//   const lines = currentMemories.split('\n'); // 按照换行分成数组
+//   let currentSection = ''; // 当前标题
+//   let currentContent = []; // 内容数组
+//   for (const line of lines) {
+//     if (line.startsWith('# ')) {
+//       if (currentSection && currentContent.length > 0) {
+//         const sectionContent = currentContent.join('\n').trim();
+//         sections[currentSection] = sectionContent.length;
+//       }
+//       currentSection = line;
+//       currentContent = [];
+//     } else {
+//       currentContent.push(line);
+//     }
+//   }
+//   if (currentSection && currentContent.length > 0) {
+//     const sectionContent = currentContent.join('\n').trim();
+//     sections[currentSection] = sectionContent.length;
+//   }
+//   const isExcessive = total > MAX_TOTAL_SESSION_MEMORY_LENGTH;
+//   const isExcessiveSections = Object.entries(sections)
+//     .filter(([_, length]) => length > MAX_SECTION_LENGTH)
+//     .sort(([, a], [, b]) => b - a)
+//     .map(
+//       ([section, length]) => `- “${section}” 大约有 ${length} 个字数（限制：${MAX_SECTION_LENGTH}）`
+//     );
+//   let prompt: string = '';
+//   if (isExcessive) {
+//     prompt += `\n\n关键：当前 会话记忆 大约有 ${total} 个 token，已经超过最大限制 ${MAX_TOTAL_SESSION_MEMORY_LENGTH} 个字数。你必须将文件压缩到这个预算范围内。请积极缩短那些过长的 section，删除不那么重要的细节，合并相关条目，并总结较早的内容。优先保证 "当前状态" 和 "错误与修正" 这两个部分准确且详细。`;
+//   }
+
+//   if (isExcessiveSections) {
+//     prompt += isExcessive
+//       ? ''
+//       : `重要：以下 section 已超出单 section 长度上限，必须压缩'}:\n${isExcessiveSections.join('\n')}`;
+//   }
+
+//   return prompt;
+// }
+
 /**
  * 得到前200条记忆索引
  * @param globalMemoryIndex
@@ -203,6 +256,67 @@ export const buildUseGlobalMemoriesPrompt = (
   return prompt.join('\n');
 };
 
+// const buildSessionMemoriesPrompt = (currentMemories: string, updateToolName: string) => {
+//   const template = `
+//     # 会话标题
+//   _用 5 到 10 个词写一个简短且有辨识度的会话标题。信息密度要高，不要有废话。_
+
+//   # 当前状态
+//   _当前正在处理什么？下一步马上要做什么？_
+
+//   # 任务说明
+//   _用户要求干什么？有哪些设计决策，或其他需要说明的上下文？_
+
+//   # 错误与修正
+//   _遇到了哪些错误，以及这些错误是如何修复的？用户纠正了什么？哪些做法失败了，之后不应再尝试？_
+
+//   # 经验总结
+//   _哪些方法效果好？哪些不好？有哪些需要避免的点？不要和其他章节重复。_
+
+//   # 关键结果
+//   _如果用户要求产出某个特定结果，比如问题答案、表格或其他文档，请在这里重复记录最终结果。_
+
+//   # 工作日志
+//   _按步骤记录：尝试了什么、完成了什么？每一步都尽量简短概括。_
+//   `;
+
+//   const prompt = `
+//     ** 重要：以下的信息以及说明都不是实际用户对话的一部分。 **
+//     请记忆提供的用户对话内容，更新当前记忆。
+
+//     内容已经为你读取好了。它的内容如下：
+//     <current_notes_content>
+//       ${currentMemories || template}
+//     </current_notes_content>
+
+//     你唯一的任务就是使用 ${updateToolName} 工具更新这个内容。
+
+//     编辑是必须遵守以下关键规则：
+
+//     - 文件必须严格保存原有结构，索引 section、标题和斜体索引必须完整保留
+//     - 绝对不允许修改、删除或新增 section 标题（即那些以 '#' 看开头的行，例如 '# 任务规范'）
+//     - 绝对不要修改或删除斜体的 _section description_ 行（它们是每个标题后面紧跟着的斜体说明行，以下划线开头并以下划线结尾）
+//     - 这些斜体 _section descriptions_ 是模板说明，必须原封不动地保留——它们用于指导每个 section 应该写什么内容
+//     - 你只能更新每个现有 section 中、位于这些斜体说明行下面的实际内容
+//     - 不要在现有结构之外新增任何 section、总结或信息
+//     - 如果某个 section 没有实质性的新内容，可以不更新。不要添加像 “尚未有信息” 这样的凑数内容；如果合适，就让这些 section
+//    保持空白或不改动
+//     - 对于 “关键结果” 一栏，要包含用户要求的完整、精确输出（例如完整表格、完整答案等）
+//     - 每个 section 尽量控制在约 ${MAX_SECTION_LENGTH} 个字以内——如果某个 section  接近这个上限，就压缩精简掉不那么重要的细节，同时保留最关键的信息
+//     - 聚焦于可执行、具体的信息，这些信息应能帮助别人理解或复现对话中讨论过的工作
+//     - 一定要更新 “当前状态” 一栏，使其反映最近一次工作的最新状态——这对 上下文压缩 之后保持连续性至关重要
+
+//     结构保留提醒：
+//     每个 section 都有两个必须完全保留的部分，且必须与当前文件中的内容保持完全一致：
+//     1. section 标题（以 '#' 开头的那一行）
+//     2. 斜体说明行（紧跟在标题后面的那行 _斜体文本_ —— 这是模板说明）
+//     你只能更新这两行保留内容之后的实际正文内容。那些以下划线开头和结尾的斜体说明行属于模板结构的一部分，不是可以编辑或删的正文内容。
+//   `;
+//   const reminder = generateSectionReminders(currentMemories);
+
+//   return prompt + reminder;
+// };
+
 /**
  * 获取全局记忆agent， 该agent会记录所有的消息
  * @param msgList 消息列表，包含消息ID、内容和角色等信息
@@ -210,7 +324,7 @@ export const buildUseGlobalMemoriesPrompt = (
  * @returns
  */
 export const getGlobalMemoryAgent = async (
-  msgList: GlobalMsgList[],
+  msgList: MsgList[],
   threadId: string,
   userid: number
 ) => {
@@ -230,7 +344,7 @@ export const getGlobalMemoryAgent = async (
    */
     function getrecordMsgList() {
       const previousMessageId = previousMessageIdMap.get(threadId);
-      const recordMsgList: GlobalMsgList[] = [];
+      const recordMsgList: MsgList[] = [];
 
       const previousMsgIndex = previousMessageId
         ? newMessageList!.findIndex(msg => msg.messageId === previousMessageId)
@@ -279,7 +393,7 @@ export const getGlobalMemoryAgent = async (
       return END;
     }
 
-    function getModel(recordMsgList: GlobalMsgList[]) {
+    function getModel(recordMsgList: MsgList[]) {
       // 防止重复查询数据库
       let prompt: string[];
       return async (state: typeof MemoryAgentStateAnnotation.State) => {
@@ -349,6 +463,16 @@ export const getGlobalMemoryAgent = async (
     }
   }
 };
+
+// export const getSessionMemoryAgent = async (
+//   msgList: MsgList[],
+//   threadId: string,
+//   userid: number
+// ) => {
+//   function getSessionMemory() {
+
+//   }
+// };
 
 /**
  * 加载记忆节点，在主图中作为第一个节点执行，将记忆提示词写入 state.memoryPrompt
