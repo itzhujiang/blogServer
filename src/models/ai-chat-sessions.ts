@@ -73,7 +73,7 @@ export function initAiChatSessionsModel(sequelize: Sequelize): typeof AiChatSess
         comment: '会话标题，默认取第一条用户消息摘要，支持后续编辑',
       },
       last_message_preview: {
-        type: DataTypes.STRING(500),
+        type: DataTypes.TEXT,
         allowNull: true,
         comment: '最后一条实际消息的摘要，用于会话列表展示',
       },
