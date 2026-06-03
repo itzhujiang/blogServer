@@ -7,14 +7,60 @@ import {
   AiChatMessages,
   AiChatMessageRoleLiteral,
   AiChatMessageTypeLiteral,
+  AiSessionMemories,
   sequelize,
 } from '../../models';
+import { Op } from 'sequelize';
 import { RunAgentInput } from '@ag-ui/core';
 import { agUiInputToUnifyInput, unifyInputToLangChainInput } from '@/ai/utils/adapters';
 import { createMainAgent } from '@/ai/agent';
 import { v4 as uuidv4 } from 'uuid';
 import { toolExecutionManager } from '@/ai/utils/toolExecutionManager';
-import { MsgList, getGlobalMemoryAgent } from '@/ai/agent/memory';
+import { MsgList, getGlobalMemoryAgent, getSessionMemoryAgent } from '@/ai/agent/memory';
+
+/**
+ * 获取尚未被会话记忆 agent 处理的消息列表
+ * @param {string} threadId 会话id
+ * @param { number } userId 用户id
+ * @param { string } terminateMessageId 终止id
+ */
+const getUnprocessedSessionMemoryMessages = async (threadId: string, userId: number,terminateMessageId?: string) => {
+  const sessionMemories = await AiSessionMemories.findOne({
+    where: {
+      thread_id: threadId,
+      user_id: userId
+    },
+    attributes: ['last_message_id']
+  })
+  if (sessionMemories) {
+    const startMessageId = sessionMemories.last_message_id;
+    const [startMsg, terminateMsg] = await Promise.all([
+      AiChatMessages.findOne({
+        where: { message_id: startMessageId },
+        attributes: ['id'],
+      }),
+      terminateMessageId
+        ? AiChatMessages.findOne({
+            where: { message_id: terminateMessageId },
+            attributes: ['id'],
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (!startMsg) return [];
+
+    return await AiChatMessages.findAll({
+      where: {
+        id: {
+          [Op.gt]: startMsg.id,
+          ...(terminateMsg ? { [Op.lte]: terminateMsg.id } : {}),
+        },
+      },
+      order: [['id', 'ASC']],
+    });
+  }
+  return [];
+};
 
 type ChatRequestType = RunAgentInput;
 
@@ -22,17 +68,27 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
   // const { id } = req.aiUser!;
   // const uuid = uuidv4();
   const transaction = await sequelize.transaction();
-  const globalMsgList: MsgList[] = req.body.messages.map(item => {
+  
+  try {
+    const reasoningId = uuidv4();
+    const activityId = uuidv4();
+    const threadId = req.body.threadId;
+    const unprocessedSessionMemoryMessages = await getUnprocessedSessionMemoryMessages(threadId, req.aiUser!.id, req.body.messages[req.body.messages.length - 1].id);
+    
+    const messagesList = unprocessedSessionMemoryMessages.map(item => {
+      return {
+        id: item.message_id,
+        content: item.content,
+        role: item.role
+      }
+    })
+    const msgList: MsgList[] = [...req.body.messages, ...messagesList].map(item => {
     return {
       messageId: item.id,
       content: item.content as string,
       role: item.role,
     };
   });
-  try {
-    const reasoningId = uuidv4();
-    const activityId = uuidv4();
-    const threadId = req.body.threadId;
     const session = await AiChatSessions.findOne({
       where: {
         session_id: threadId,
@@ -81,8 +137,13 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
         transaction,
       }
     );
-    const langChainInput = unifyInputToLangChainInput(agUiInputToUnifyInput(req.body));
-    // langChainInput.tools
+    const langChainInput = unifyInputToLangChainInput(agUiInputToUnifyInput({
+      ...req.body,
+      messages: [
+        ...req.body.messages,
+        ...messagesList
+      ]
+    }));
     const run = createMainAgent();
     const runResult = await run({
       thread_id: threadId,
@@ -128,7 +189,8 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
               threadId: evt.threadId,
             });
             agui.end(res);
-            getGlobalMemoryAgent(globalMsgList, evt.threadId, req.aiUser!.id);
+            getGlobalMemoryAgent(msgList, evt.threadId, req.aiUser!.id);
+            getSessionMemoryAgent(msgList, evt.threadId, req.aiUser!.id);
           }
           break;
         case 'messageStart':
@@ -170,7 +232,7 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
               { op: 'replace', path: '/content', value: 'AI输出完成' },
             ],
           });
-          globalMsgList.push({
+          msgList.push({
             messageId: evt.messageId,
             content,
             role: 'assistant',
@@ -211,7 +273,7 @@ const chat = async (req: RequestType<ChatRequestType, 'post'>, res: ResponseType
             message_type: 'A2UI',
             content: value,
           });
-          globalMsgList.push({
+          msgList.push({
             messageId: id,
             content: value,
             role: 'assistant',

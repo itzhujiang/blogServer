@@ -290,7 +290,7 @@ export const buildUseGlobalMemoriesPrompt = (
   return prompt.join('\n');
 };
 
-const buildSessionMemoriesPrompt = (currentMemories: string, updateToolName: string) => {
+const buildSessionMemoriesPrompt = ( currentMemories: string, updateToolName: string, extraPrompt: string = '') => {
   const template = `
     # 会话标题
   _用 5 到 10 个词写一个简短且有辨识度的会话标题。信息密度要高，不要有废话。_
@@ -348,8 +348,21 @@ const buildSessionMemoriesPrompt = (currentMemories: string, updateToolName: str
   `;
   const reminder = generateSectionReminders(currentMemories);
 
-  return prompt + reminder;
+  return extraPrompt + prompt + reminder;
 };
+
+/**
+ * 构建会话记忆的使用提示词
+ * @param contnet 
+ * @returns 
+ */
+// const buildUserSessionMemoriesPrompt = (contnet: string) => {
+//   const prompt = `
+//     你不是新会话，之前有一段很长的对话被压缩了，下面是摘要：
+//     ${contnet}
+//   `
+//   return prompt;
+// }
 
 /**
  * 获取全局记忆agent， 该agent会记录所有的消息
@@ -579,6 +592,8 @@ export const getSessionMemoryAgent = async (
   async function toolExecutor(state: typeof sessionMemoryAgentStateAnnotation.State) {
     const tools = [saveSessionMemories];
     const toolNode = new ToolNode(tools);
+    console.log('toolExecutorstate', state.threadId);
+    
     // 执行工具
     return await toolNode.invoke(state);
   }
@@ -591,11 +606,17 @@ export const getSessionMemoryAgent = async (
     return END;
   }
 
-  function getModel(content: string) {
-    const prompt = buildSessionMemoriesPrompt(content, 'saveSessionMemories');
+  function getModel(content: string, lastMessageId: string, threadId: string, userid: number) {
+    const extraPropmt = `
+      ** saveSessionMemories 工具参数: **
+      - userId: ${userid}
+      - threadId: ${threadId}
+      - lastMessageId: ${lastMessageId}
+    `
+    const prompt = buildSessionMemoriesPrompt(content, 'saveSessionMemories', extraPropmt);
     const tools = [saveSessionMemories];
     const llm = createOpenAiLLM({
-      verbose: true,
+      verbose: false,
     }).bindTools(tools);
     return async (state: typeof sessionMemoryAgentStateAnnotation.State) => {
       const response = await llm.invoke([
@@ -614,19 +635,21 @@ export const getSessionMemoryAgent = async (
   const extractMessageList = await getMessageList(lastMessageId);
   const contentLength = extractMessageList
     .map(item => item.content.length)
-    .reduce((a, b) => a + b, 0);
+      .reduce((a, b) => a + b, 0);
   if (contentLength < MAX_SESSION_MEMORY_LENGTH) {
     return; // 如果新增消息内容总字数没有超过限制，则不需要更新记忆
   }
   const newLastMessageId = extractMessageList[extractMessageList.length - 1]?.messageId ?? lastMessageId;
-  const callModel = getModel(content);
+  const callModel = getModel(content, newLastMessageId, threadId, userid);
   const workflow = new StateGraph(sessionMemoryAgentStateAnnotation)
     .addNode('callModel', callModel)
     .addNode('tool_executor', toolExecutor)
     .addEdge(START, 'callModel')
     .addConditionalEdges('callModel', shouldContinue, ['tool_executor', END])
     .addEdge('tool_executor', 'callModel'); // 执行完工具回到 callModel
-  const agent = workflow.compile();
+    const agent = workflow.compile();
+  console.log('threadId', threadId);
+  console.log('userid', userid);
   await agent.invoke({
     threadId: threadId,
     userId: userid,
@@ -656,12 +679,84 @@ export const getSessionMemoryAgent = async (
   }
 };
 
+// function flushSessionSection(
+//   sectionHeader: string,
+//   sectionLines: string[],
+//   maxCharsPerSection: number,
+// ): { lines: string[]; wasTruncated: boolean } {
+//   if (!sectionHeader) {
+//     return { lines: sectionLines, wasTruncated: false }
+//   }
+//   const sectionContent = sectionLines.join('\n')
+//   if (sectionContent.length <= maxCharsPerSection) {
+//     return { lines: [sectionHeader, ...sectionLines], wasTruncated: false }
+//   }
+//   let charCount = 0
+//   const keptLines: string[] = [sectionHeader]
+//   for (const line of sectionLines) {
+//     if (charCount + line.length + 1 > maxCharsPerSection) {
+//       break
+//     }
+//     keptLines.push(line)
+//     charCount += line.length + 1
+//   }
+//   keptLines.push('\n[... 因长度被截断 ...]')
+//   return { lines: keptLines, wasTruncated: true }
+// }
+
+
+/**
+ * 截断会话记忆
+ * @param {string} content 内容
+ */
+// const truncateSessionMemoryForCompact = (content: string,) => {
+//   const lines = content.split('\n')
+//   const outputLines: string[] = []
+//   let currentSectionLines: string[] = []
+//   let currentSectionHeader = ''
+//   let wasTruncated = false
+
+//   for (const line of lines) {
+//     if (line.startsWith('# ')) {
+//       const result = flushSessionSection(
+//         currentSectionHeader,
+//         currentSectionLines,
+//         MAX_SECTION_LENGTH,
+//       )
+//       outputLines.push(...result.lines)
+//       wasTruncated = wasTruncated || result.wasTruncated
+//       currentSectionHeader = line
+//       currentSectionLines = []
+//     } else {
+//       currentSectionLines.push(line)
+//     }
+//   }
+//   const result = flushSessionSection(
+//     currentSectionHeader,
+//     currentSectionLines,
+//     MAX_SECTION_LENGTH,
+//   )
+//   outputLines.push(...result.lines)
+//   wasTruncated = wasTruncated || result.wasTruncated
+
+//   return {
+//     truncatedContent: outputLines.join('\n'),
+//     wasTruncated,
+//   }
+// }
 /**
  * 加载记忆节点，在主图中作为第一个节点执行，将记忆提示词写入 state.memoryPrompt
  * 所有后续 agent 可直接从 state.memoryPrompt 读取，无需各自查询数据库
  */
 export async function loadMemoryNode(state: typeof AgentStateAnnotation.State) {
-  const content = await fetchGlobalMemoryIndex(state.userId);
-  const memoryPrompt = buildUseGlobalMemoriesPrompt(content, 'getUserGlobalMemories');
+  const [AiGlobalChatMemoriesontent] = await Promise.all([
+    fetchGlobalMemoryIndex(state.userId),
+    fetchSessionMemories(state.userId, state.threadId)
+  ])
+  const memoryPrompt = `
+  ## 全局记忆
+  ${buildUseGlobalMemoriesPrompt(AiGlobalChatMemoriesontent, 'getUserGlobalMemories')}
+  ## 会话记忆
+  `;
   return { memoryPrompt };
 }
