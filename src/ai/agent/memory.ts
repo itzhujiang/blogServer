@@ -290,7 +290,11 @@ export const buildUseGlobalMemoriesPrompt = (
   return prompt.join('\n');
 };
 
-const buildSessionMemoriesPrompt = ( currentMemories: string, updateToolName: string, extraPrompt: string = '') => {
+const buildSessionMemoriesPrompt = (
+  currentMemories: string,
+  updateToolName: string,
+  extraPrompt: string = ''
+) => {
   const template = `
     # 会话标题
   _用 5 到 10 个词写一个简短且有辨识度的会话标题。信息密度要高，不要有废话。_
@@ -353,16 +357,27 @@ const buildSessionMemoriesPrompt = ( currentMemories: string, updateToolName: st
 
 /**
  * 构建会话记忆的使用提示词
- * @param contnet 
- * @returns 
+ * @param contnet 内容
+ * @param wasTruncated 内容是否被截断
+ * @param toolName 获取完整内容的工具名称
+ * @param extraPrompt 额外的提示词内容
+ * @returns
  */
-// const buildUserSessionMemoriesPrompt = (contnet: string) => {
-//   const prompt = `
-//     你不是新会话，之前有一段很长的对话被压缩了，下面是摘要：
-//     ${contnet}
-//   `
-//   return prompt;
-// }
+const buildUserSessionMemoriesPrompt = (
+  contnet: string,
+  wasTruncated: boolean,
+  toolName: string,
+  extraPrompt: string = ''
+) => {
+  let prompt = `
+    你不是新会话，之前有一段很长的对话被压缩了，下面是摘要：
+    ${contnet}
+  `;
+  if (wasTruncated) {
+    prompt += `\n\n 重要：由于之前的会话记忆内容过长，已经被压缩了。请注意，提供的摘要可能不包含所有细节，因此在使用这些记忆时要格外小心。你可以使用 ${toolName} 工具来获取完整的记忆内容，以确保你没有遗漏任何关键信息。`;
+  }
+  return extraPrompt + prompt;
+};
 
 /**
  * 获取全局记忆agent， 该agent会记录所有的消息
@@ -522,156 +537,157 @@ export const getSessionMemoryAgent = async (
   }
   sessionIsRunningMap.set(threadId, true);
   try {
-  /**
-   * 获取现有记忆和处理到的sessionId
-   * @returns
-   */
-  async function getSessionMemory() {
-    const sessionMemory = {
-      content: '',
-      lastMessageId: '',
-    };
-    if (sessionLastTimeMemory.has(threadId)) {
-      const lastTimeMemory = sessionLastTimeMemory.get(threadId);
-      sessionMemory.content = lastTimeMemory!.memoryContent;
-      sessionMemory.lastMessageId = lastTimeMemory!.lastMessageId;
-    } else {
-      const res = await fetchSessionMemories(userid, threadId);
-      sessionLastTimeMemory.set(threadId, {
-        lastMessageId: res.lastMessageId,
-        memoryContent: res.content,
-      });
-      sessionMemory.content = res.content;
-      sessionMemory.lastMessageId = res.lastMessageId;
-    }
-    return sessionMemory;
-  }
-  /**
-   * 获取指定messageId到最后的信息列表
-   */
-  async function getMessageList(startMessageId: string) {
-    const extractMessageList: MsgList[] = [];
-    if (!startMessageId) {
-      // 新会话，没有记录点，返回全部消息
-      return [...msgList];
-    }
-    const isExistence = msgList.some(item => item.messageId === startMessageId);
-    if (isExistence) {
-      // 如果存在则不需要前往数据库中查找
-      const startIndex = msgList.findIndex(item => item.messageId === startMessageId);
-      extractMessageList.push(...msgList.slice(startIndex));
-    } else {
-      // 如果不存在则需要前往数据库中查找
-      const anchor = await AiChatMessages.findOne({
-        where: { message_id: startMessageId, session_id: threadId },
-        attributes: ['id', 'session_id'],
-      });
-      if (anchor) {
-        const dbMessages = await AiChatMessages.findAll({
-          where: {
-            session_id: anchor.session_id,
-            id: { [Op.gte]: anchor.id },
-          },
-          order: [['id', 'ASC']],
+    /**
+     * 获取现有记忆和处理到的sessionId
+     * @returns
+     */
+    async function getSessionMemory() {
+      const sessionMemory = {
+        content: '',
+        lastMessageId: '',
+      };
+      if (sessionLastTimeMemory.has(threadId)) {
+        const lastTimeMemory = sessionLastTimeMemory.get(threadId);
+        sessionMemory.content = lastTimeMemory!.memoryContent;
+        sessionMemory.lastMessageId = lastTimeMemory!.lastMessageId;
+      } else {
+        const res = await fetchSessionMemories(userid, threadId);
+        sessionLastTimeMemory.set(threadId, {
+          lastMessageId: res.lastMessageId,
+          memoryContent: res.content,
         });
-        const dbMsgList = dbMessages.map(m => ({
-          messageId: m.message_id,
-          content: m.content,
-          role: m.role,
-        }));
-        extractMessageList.push(...mergeMsgList(dbMsgList, msgList));
+        sessionMemory.content = res.content;
+        sessionMemory.lastMessageId = res.lastMessageId;
       }
+      return sessionMemory;
+    }
+    /**
+     * 获取指定messageId到最后的信息列表
+     */
+    async function getMessageList(startMessageId: string) {
+      const extractMessageList: MsgList[] = [];
+      if (!startMessageId) {
+        // 新会话，没有记录点，返回全部消息
+        return [...msgList];
+      }
+      const isExistence = msgList.some(item => item.messageId === startMessageId);
+      if (isExistence) {
+        // 如果存在则不需要前往数据库中查找
+        const startIndex = msgList.findIndex(item => item.messageId === startMessageId);
+        extractMessageList.push(...msgList.slice(startIndex));
+      } else {
+        // 如果不存在则需要前往数据库中查找
+        const anchor = await AiChatMessages.findOne({
+          where: { message_id: startMessageId, session_id: threadId },
+          attributes: ['id', 'session_id'],
+        });
+        if (anchor) {
+          const dbMessages = await AiChatMessages.findAll({
+            where: {
+              session_id: anchor.session_id,
+              id: { [Op.gte]: anchor.id },
+            },
+            order: [['id', 'ASC']],
+          });
+          const dbMsgList = dbMessages.map(m => ({
+            messageId: m.message_id,
+            content: m.content,
+            role: m.role,
+          }));
+          extractMessageList.push(...mergeMsgList(dbMsgList, msgList));
+        }
+      }
+
+      return extractMessageList;
     }
 
-    return extractMessageList;
-  }
+    /**
+     * 工具执行节点
+     */
+    async function toolExecutor(state: typeof sessionMemoryAgentStateAnnotation.State) {
+      const tools = [saveSessionMemories];
+      const toolNode = new ToolNode(tools);
+      console.log('toolExecutorstate', state.threadId);
 
-  /**
-   * 工具执行节点
-   */
-  async function toolExecutor(state: typeof sessionMemoryAgentStateAnnotation.State) {
-    const tools = [saveSessionMemories];
-    const toolNode = new ToolNode(tools);
-    console.log('toolExecutorstate', state.threadId);
-    
-    // 执行工具
-    return await toolNode.invoke(state);
-  }
-
-  function shouldContinue(state: typeof sessionMemoryAgentStateAnnotation.State) {
-    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
-    if ((lastMessage.tool_calls?.length ?? 0) > 0) {
-      return 'tool_executor';
+      // 执行工具
+      return await toolNode.invoke(state);
     }
-    return END;
-  }
 
-  function getModel(content: string, lastMessageId: string, threadId: string, userid: number) {
-    const extraPropmt = `
+    function shouldContinue(state: typeof sessionMemoryAgentStateAnnotation.State) {
+      const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
+      if ((lastMessage.tool_calls?.length ?? 0) > 0) {
+        return 'tool_executor';
+      }
+      return END;
+    }
+
+    function getModel(content: string, lastMessageId: string, threadId: string, userid: number) {
+      const extraPropmt = `
       ** saveSessionMemories 工具参数: **
       - userId: ${userid}
       - threadId: ${threadId}
       - lastMessageId: ${lastMessageId}
-    `
-    const prompt = buildSessionMemoriesPrompt(content, 'saveSessionMemories', extraPropmt);
-    const tools = [saveSessionMemories];
-    const llm = createOpenAiLLM({
-      verbose: false,
-    }).bindTools(tools);
-    return async (state: typeof sessionMemoryAgentStateAnnotation.State) => {
-      const response = await llm.invoke([
-        {
-          role: 'system',
-          content: prompt,
-        },
-        ...state.messages,
-      ]);
-      return {
-        messages: [response],
-      };
-    };
-  }
-  const { content, lastMessageId } = await getSessionMemory();
-  const extractMessageList = await getMessageList(lastMessageId);
-  const contentLength = extractMessageList
-    .map(item => item.content.length)
-      .reduce((a, b) => a + b, 0);
-  if (contentLength < MAX_SESSION_MEMORY_LENGTH) {
-    return; // 如果新增消息内容总字数没有超过限制，则不需要更新记忆
-  }
-  const newLastMessageId = extractMessageList[extractMessageList.length - 1]?.messageId ?? lastMessageId;
-  const callModel = getModel(content, newLastMessageId, threadId, userid);
-  const workflow = new StateGraph(sessionMemoryAgentStateAnnotation)
-    .addNode('callModel', callModel)
-    .addNode('tool_executor', toolExecutor)
-    .addEdge(START, 'callModel')
-    .addConditionalEdges('callModel', shouldContinue, ['tool_executor', END])
-    .addEdge('tool_executor', 'callModel'); // 执行完工具回到 callModel
-    const agent = workflow.compile();
-  console.log('threadId', threadId);
-  console.log('userid', userid);
-  await agent.invoke({
-    threadId: threadId,
-    userId: userid,
-    lastMessageId: lastMessageId,
-    messages: [
-      ...extractMessageList.map(item => {
+    `;
+      const prompt = buildSessionMemoriesPrompt(content, 'saveSessionMemories', extraPropmt);
+      const tools = [saveSessionMemories];
+      const llm = createOpenAiLLM({
+        verbose: false,
+      }).bindTools(tools);
+      return async (state: typeof sessionMemoryAgentStateAnnotation.State) => {
+        const response = await llm.invoke([
+          {
+            role: 'system',
+            content: prompt,
+          },
+          ...state.messages,
+        ]);
         return {
-          role: item.role,
-          content: item.content,
+          messages: [response],
         };
-      }),
-      {
-        role: 'user',
-        content: '请根据以上对话内容，提取关键信息形成记忆，并调用工具保存。',
-      },
-    ],
-  });
-  // 执行成功后更新内存缓存中的记录点
-  sessionLastTimeMemory.set(threadId, {
-    lastMessageId: newLastMessageId,
-    memoryContent: content,
-  });
+      };
+    }
+    const { content, lastMessageId } = await getSessionMemory();
+    const extractMessageList = await getMessageList(lastMessageId);
+    const contentLength = extractMessageList
+      .map(item => item.content.length)
+      .reduce((a, b) => a + b, 0);
+    if (contentLength < MAX_SESSION_MEMORY_LENGTH) {
+      return; // 如果新增消息内容总字数没有超过限制，则不需要更新记忆
+    }
+    const newLastMessageId =
+      extractMessageList[extractMessageList.length - 1]?.messageId ?? lastMessageId;
+    const callModel = getModel(content, newLastMessageId, threadId, userid);
+    const workflow = new StateGraph(sessionMemoryAgentStateAnnotation)
+      .addNode('callModel', callModel)
+      .addNode('tool_executor', toolExecutor)
+      .addEdge(START, 'callModel')
+      .addConditionalEdges('callModel', shouldContinue, ['tool_executor', END])
+      .addEdge('tool_executor', 'callModel'); // 执行完工具回到 callModel
+    const agent = workflow.compile();
+    console.log('threadId', threadId);
+    console.log('userid', userid);
+    await agent.invoke({
+      threadId: threadId,
+      userId: userid,
+      lastMessageId: lastMessageId,
+      messages: [
+        ...extractMessageList.map(item => {
+          return {
+            role: item.role,
+            content: item.content,
+          };
+        }),
+        {
+          role: 'user',
+          content: '请根据以上对话内容，提取关键信息形成记忆，并调用工具保存。',
+        },
+      ],
+    });
+    // 执行成功后更新内存缓存中的记录点
+    sessionLastTimeMemory.set(threadId, {
+      lastMessageId: newLastMessageId,
+      memoryContent: content,
+    });
   } catch (error) {
     console.log('session memory agent err', error);
   } finally {
@@ -679,84 +695,93 @@ export const getSessionMemoryAgent = async (
   }
 };
 
-// function flushSessionSection(
-//   sectionHeader: string,
-//   sectionLines: string[],
-//   maxCharsPerSection: number,
-// ): { lines: string[]; wasTruncated: boolean } {
-//   if (!sectionHeader) {
-//     return { lines: sectionLines, wasTruncated: false }
-//   }
-//   const sectionContent = sectionLines.join('\n')
-//   if (sectionContent.length <= maxCharsPerSection) {
-//     return { lines: [sectionHeader, ...sectionLines], wasTruncated: false }
-//   }
-//   let charCount = 0
-//   const keptLines: string[] = [sectionHeader]
-//   for (const line of sectionLines) {
-//     if (charCount + line.length + 1 > maxCharsPerSection) {
-//       break
-//     }
-//     keptLines.push(line)
-//     charCount += line.length + 1
-//   }
-//   keptLines.push('\n[... 因长度被截断 ...]')
-//   return { lines: keptLines, wasTruncated: true }
-// }
-
+function flushSessionSection(
+  sectionHeader: string,
+  sectionLines: string[],
+  maxCharsPerSection: number
+): { lines: string[]; wasTruncated: boolean } {
+  if (!sectionHeader) {
+    return { lines: sectionLines, wasTruncated: false };
+  }
+  const sectionContent = sectionLines.join('\n');
+  if (sectionContent.length <= maxCharsPerSection) {
+    return { lines: [sectionHeader, ...sectionLines], wasTruncated: false };
+  }
+  let charCount = 0;
+  const keptLines: string[] = [sectionHeader];
+  for (const line of sectionLines) {
+    if (charCount + line.length + 1 > maxCharsPerSection) {
+      break;
+    }
+    keptLines.push(line);
+    charCount += line.length + 1;
+  }
+  keptLines.push('\n[... 因长度被截断 ...]');
+  return { lines: keptLines, wasTruncated: true };
+}
 
 /**
  * 截断会话记忆
  * @param {string} content 内容
  */
-// const truncateSessionMemoryForCompact = (content: string,) => {
-//   const lines = content.split('\n')
-//   const outputLines: string[] = []
-//   let currentSectionLines: string[] = []
-//   let currentSectionHeader = ''
-//   let wasTruncated = false
+const truncateSessionMemoryForCompact = (content: string) => {
+  const lines = content.split('\n');
+  const outputLines: string[] = [];
+  let currentSectionLines: string[] = [];
+  let currentSectionHeader = '';
+  let wasTruncated = false;
 
-//   for (const line of lines) {
-//     if (line.startsWith('# ')) {
-//       const result = flushSessionSection(
-//         currentSectionHeader,
-//         currentSectionLines,
-//         MAX_SECTION_LENGTH,
-//       )
-//       outputLines.push(...result.lines)
-//       wasTruncated = wasTruncated || result.wasTruncated
-//       currentSectionHeader = line
-//       currentSectionLines = []
-//     } else {
-//       currentSectionLines.push(line)
-//     }
-//   }
-//   const result = flushSessionSection(
-//     currentSectionHeader,
-//     currentSectionLines,
-//     MAX_SECTION_LENGTH,
-//   )
-//   outputLines.push(...result.lines)
-//   wasTruncated = wasTruncated || result.wasTruncated
+  for (const line of lines) {
+    if (line.startsWith('# ')) {
+      const result = flushSessionSection(
+        currentSectionHeader,
+        currentSectionLines,
+        MAX_SECTION_LENGTH
+      );
+      outputLines.push(...result.lines);
+      wasTruncated = wasTruncated || result.wasTruncated;
+      currentSectionHeader = line;
+      currentSectionLines = [];
+    } else {
+      currentSectionLines.push(line);
+    }
+  }
+  const result = flushSessionSection(currentSectionHeader, currentSectionLines, MAX_SECTION_LENGTH);
+  outputLines.push(...result.lines);
+  wasTruncated = wasTruncated || result.wasTruncated;
 
-//   return {
-//     truncatedContent: outputLines.join('\n'),
-//     wasTruncated,
-//   }
-// }
+  return {
+    truncatedContent: outputLines.join('\n'),
+    wasTruncated,
+  };
+};
 /**
  * 加载记忆节点，在主图中作为第一个节点执行，将记忆提示词写入 state.memoryPrompt
  * 所有后续 agent 可直接从 state.memoryPrompt 读取，无需各自查询数据库
  */
 export async function loadMemoryNode(state: typeof AgentStateAnnotation.State) {
-  const [AiGlobalChatMemoriesontent] = await Promise.all([
+  const [AiGlobalChatMemoriesontent, sessionMemoryContent] = await Promise.all([
     fetchGlobalMemoryIndex(state.userId),
-    fetchSessionMemories(state.userId, state.threadId)
-  ])
+    fetchSessionMemories(state.userId, state.threadId),
+  ]);
+  const sessionMemory = truncateSessionMemoryForCompact(sessionMemoryContent.content);
+  const sessionMemoryPrompt = buildUserSessionMemoriesPrompt(
+    sessionMemory.truncatedContent,
+    sessionMemory.wasTruncated,
+    'getSessionMemories',
+    `
+      getSessionMemories 工具参数:
+      - userId: ${state.userId}
+      - threadId: ${state.threadId}
+     该工具会返回当前会话的记忆内容，如果内容被截断了，请务必使用该工具来获取完整内容，以确保你没有遗漏任何重要信息。
+    `
+  );
+
   const memoryPrompt = `
   ## 全局记忆
   ${buildUseGlobalMemoriesPrompt(AiGlobalChatMemoriesontent, 'getUserGlobalMemories')}
   ## 会话记忆
+  ${sessionMemoryPrompt}
   `;
   return { memoryPrompt };
 }
